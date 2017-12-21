@@ -5,7 +5,6 @@
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
 import java.io.IOException;
-import java.lang.ref.SoftReference;
 import java.util.Collections;
 import java.util.function.Consumer;
 
@@ -15,6 +14,7 @@ import net.sourceforge.pmd.properties.PropertyTypeId;
 import net.sourceforge.pmd.util.fxdesigner.popups.EditPropertyDialogController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.PropertyDescriptorSpec;
+import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
@@ -44,8 +44,8 @@ import javafx.util.StringConverter;
  * Controls a table view used to inspect and edit the properties of
  * the rule being built. This component is made to be reused in several
  * views.
- * <p>
- * TODO: would be great to make it directly editable without compromising content validation
+ *
+ * <p>TODO: would be great to make it directly editable without compromising content validation
  *
  * @author Clément Fournier
  * @since 6.0.0
@@ -56,7 +56,7 @@ public class PropertyTableView extends TableView<PropertyDescriptorSpec> {
     private TableColumn<PropertyDescriptorSpec, PropertyTypeId> propertyTypeColumn = new TableColumn<>("Type");
     private TableColumn<PropertyDescriptorSpec, String> propertyValueColumn = new TableColumn<>("Value");
 
-    private SoftReference<Stage> editPropertyDialogCache;
+    private final SoftReferenceCache<Stage> editPropertyDialog = new SoftReferenceCache<>(this::createEditPropertyDialog);
 
     private Var<Consumer<? super PropertyDescriptorSpec>> onEditCommit = Var.newSimpleVar(null);
 
@@ -144,15 +144,7 @@ public class PropertyTableView extends TableView<PropertyDescriptorSpec> {
      * @param edited The edited property descriptor
      */
     private void popEditPropertyDialog(PropertyDescriptorSpec edited) {
-        if (editPropertyDialogCache == null || editPropertyDialogCache.get() == null) {
-            try {
-                editPropertyDialogCache = new SoftReference<>(createEditPropertyDialog());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        Stage dialog = editPropertyDialogCache.get();
+        Stage dialog = editPropertyDialog.get();
         EditPropertyDialogController wizard = (EditPropertyDialogController) dialog.getUserData();
         Platform.runLater(() -> wizard.bindToDescriptor(edited, getRuleProperties()));
         dialog.setOnHiding(e -> {
