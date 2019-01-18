@@ -92,8 +92,6 @@ public class XPathPanelController extends AbstractController {
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
     private final SoftReferenceCache<Stage> exportWizard = new SoftReferenceCache<>(this::createExportWizard);
-
-
     @FXML
     public ToolbarTitledPane expressionTitledPane;
     @FXML
@@ -108,9 +106,10 @@ public class XPathPanelController extends AbstractController {
     private TitledPane violationsTitledPane;
     @FXML
     private ListView<TextAwareNodeWrapper> xpathResultListView;
-
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
+    private Var<Language> languageUIProperty = Var.newSimpleVar(null);
+    private Subscription exportXpathWizardSubscription = Subscription.EMPTY;
 
 
     public XPathPanelController(DesignerRoot owner, MainDesignerController mainController) {
@@ -170,8 +169,10 @@ public class XPathPanelController extends AbstractController {
         DesignerUtil.rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
 
         DesignerUtil.rewireInit(getRuleBuilder().rulePropertiesProperty(),
-                                propertyTableView.rulePropertiesProperty(), propertyTableView::setRuleProperties);
+                                propertyTableView.rulePropertiesProperty(),
+                                propertyTableView::setRuleProperties);
     }
+
 
     private void initialiseVersionSelection() {
         ToggleGroup xpathVersionToggleGroup = new ToggleGroup();
@@ -237,8 +238,6 @@ public class XPathPanelController extends AbstractController {
     }
 
 
-
-
     /**
      * Evaluate the contents of the XPath expression area
      * on the given compilation unit. This updates the xpath
@@ -288,25 +287,26 @@ public class XPathPanelController extends AbstractController {
     }
 
 
-
     /** Show the export wizard, creating it if needed. */
     public void showExportXPathToRuleWizard() {
         Stage dialog = exportWizard.get();
         ExportXPathWizardController wizard = (ExportXPathWizardController) dialog.getUserData();
-        Platform.runLater(() -> {
-            this.bindToExportWizard(wizard);
-            wizard.bindToRuleBuilder(getRuleBuilder());
-        });
+        Platform.runLater(() ->
+                              this.exportXpathWizardSubscription = Subscription.multi(
+                                  this.bindToExportWizard(wizard),
+                                  wizard.bindToRuleBuilder(getRuleBuilder())
+                              ));
 
         dialog.setOnCloseRequest(e -> {
-            wizard.shutdown();
+            exportXpathWizardSubscription.unsubscribe();
+            exportXpathWizardSubscription = Subscription.EMPTY;
             this.bindToParent();
         });
         dialog.show();
     }
 
 
-    private Stage createExportWizard() throws IOException {
+    private Stage createExportWizard() {
         ExportXPathWizardController wizard = new ExportXPathWizardController();
 
         FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("xpath-export-wizard.fxml"));
@@ -336,16 +336,15 @@ public class XPathPanelController extends AbstractController {
      *
      * @param exportWizard The caller
      */
-    public void bindToExportWizard(ExportXPathWizardController exportWizard) {
+    public Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
 
         // Changes: Wizard -> MainDesigner
-        Subscription lang = exportWizard.languageProperty().changes()
-                                        .map(Change::getNewValue)
-                                        .filter(Objects::nonNull)
-                                        .map(Language::getDefaultVersion)
-                                        .subscribe(parent::setLanguageVersion);
+        return exportWizard.languageProperty().changes()
+                           .map(Change::getNewValue)
+                           .filter(Objects::nonNull)
+                           .map(Language::getDefaultVersion)
+                           .subscribe(parent::setLanguageVersion);
 
-        exportWizard.addSubscription(lang); // Register for unsubscription
     }
 
 

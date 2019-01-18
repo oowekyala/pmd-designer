@@ -7,6 +7,8 @@ package net.sourceforge.pmd.util.fxdesigner.model;
 import java.util.Optional;
 
 import org.reactfx.collection.LiveArrayList;
+import org.reactfx.collection.LiveList;
+import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.Rule;
@@ -20,9 +22,6 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 
-import javafx.beans.property.ListProperty;
-import javafx.beans.property.SimpleListProperty;
-import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
 
@@ -39,8 +38,8 @@ public class ObservableRuleBuilder implements SettingsOwner {
     private Var<Class<?>> clazz = Var.newSimpleVar(null);
 
     // doesn't contain the "xpath" and "version" properties for XPath rules
-    private ListProperty<PropertyDescriptorSpec> ruleProperties = new SimpleListProperty<>(FXCollections.observableArrayList(PropertyDescriptorSpec.extractor()));
-    private Var<ObservableList<String>> examples = Var.newSimpleVar(new LiveArrayList<>());
+    private LiveList<PropertyDescriptorSpec> ruleProperties = new LiveArrayList<>();
+    private LiveList<String> examples = new LiveArrayList<>();
 
     private Var<LanguageVersion> minimumVersion = Var.newSimpleVar(null);
     private Var<LanguageVersion> maximumVersion = Var.newSimpleVar(null);
@@ -107,17 +106,17 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
     @PersistentSequence
     public ObservableList<PropertyDescriptorSpec> getRuleProperties() {
-        return ruleProperties.getValue();
+        return ruleProperties;
     }
 
 
     public void setRuleProperties(ObservableList<PropertyDescriptorSpec> ruleProperties) {
-        this.ruleProperties.setValue(ruleProperties);
+        this.ruleProperties.setAll(ruleProperties);
     }
 
 
-    public ListProperty<PropertyDescriptorSpec> rulePropertiesProperty() {
-        return ruleProperties;
+    public Var<ObservableList<PropertyDescriptorSpec>> rulePropertiesProperty() {
+        return Var.fromVal(Val.constant(ruleProperties), this::setRuleProperties);
     }
 
 
@@ -215,13 +214,13 @@ public class ObservableRuleBuilder implements SettingsOwner {
     }
 
 
-    public Var<ObservableList<String>> getExamples() {
+    public ObservableList<String> getExamples() {
         return examples;
     }
 
 
     public void setExamples(ObservableList<String> examples) {
-        this.examples.setValue(examples);
+        this.examples.setAll(examples);
     }
 
 
@@ -344,8 +343,8 @@ public class ObservableRuleBuilder implements SettingsOwner {
             builder.usesTyperesolution(usesTypeResolution.getValue());
             builder.usesMultifile(usesMultifile.getValue());
 
-            ruleProperties.getValue().stream().map(PropertyDescriptorSpec::build).forEach(builder::defineProperty);
-            examples.getValue().forEach(builder::addExample);
+            ruleProperties.stream().map(PropertyDescriptorSpec::build).forEach(builder::defineProperty);
+            examples.forEach(builder::addExample);
 
             return Optional.of(builder.build());
         } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
