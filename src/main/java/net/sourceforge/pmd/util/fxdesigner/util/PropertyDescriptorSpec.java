@@ -189,15 +189,4 @@ public class PropertyDescriptorSpec implements SettingsOwner {
         descriptionProperty().unbind();
         valueProperty().unbind();
     }
-
-
-    /** Extractor for observable lists. */
-    public static Callback<PropertyDescriptorSpec, Observable[]> extractor() {
-        return spec -> new Observable[]{spec.nameProperty(), spec.typeIdProperty(), spec.valueProperty()};
-    }
-
-
-    public static ObservableList<PropertyDescriptorSpec> observableList() {
-        return FXCollections.observableArrayList(extractor());
-    }
 }
