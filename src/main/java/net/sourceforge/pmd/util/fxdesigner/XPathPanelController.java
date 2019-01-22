@@ -50,7 +50,6 @@ import net.sourceforge.pmd.util.fxdesigner.util.controls.PropertyTableView;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.XpathViolationListCell;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -91,7 +90,7 @@ public class XPathPanelController extends AbstractController {
     private final MainDesignerController parent;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
-    private final SoftReferenceCache<Stage> exportWizard = new SoftReferenceCache<>(this::createExportWizard);
+    private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
     @FXML
     public ToolbarTitledPane expressionTitledPane;
     @FXML
@@ -108,13 +107,13 @@ public class XPathPanelController extends AbstractController {
     private ListView<TextAwareNodeWrapper> xpathResultListView;
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
-    private Var<Language> languageUIProperty = Var.newSimpleVar(null);
-    private Subscription exportXpathWizardSubscription = Subscription.EMPTY;
 
 
     public XPathPanelController(DesignerRoot owner, MainDesignerController mainController) {
         this.designerRoot = owner;
         parent = mainController;
+
+        exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
 
         getRuleBuilder().setClazz(XPathRule.class);
     }
@@ -289,45 +288,8 @@ public class XPathPanelController extends AbstractController {
 
     /** Show the export wizard, creating it if needed. */
     public void showExportXPathToRuleWizard() {
-        Stage dialog = exportWizard.get();
-        ExportXPathWizardController wizard = (ExportXPathWizardController) dialog.getUserData();
-        Platform.runLater(() ->
-                              this.exportXpathWizardSubscription = Subscription.multi(
-                                  this.bindToExportWizard(wizard),
-                                  wizard.bindToRuleBuilder(getRuleBuilder())
-                              ));
-
-        dialog.setOnCloseRequest(e -> {
-            exportXpathWizardSubscription.unsubscribe();
-            exportXpathWizardSubscription = Subscription.EMPTY;
-            this.bindToParent();
-        });
-        dialog.show();
-    }
-
-
-    private Stage createExportWizard() {
-        ExportXPathWizardController wizard = new ExportXPathWizardController();
-
-        FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("xpath-export-wizard.fxml"));
-        loader.setController(wizard);
-
-        final Stage dialog = new Stage();
-
-        dialog.initOwner(designerRoot.getMainStage());
-        dialog.initModality(Modality.WINDOW_MODAL);
-
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Scene scene = new Scene(root);
-        dialog.setTitle("Export XPath expression to rule");
-        dialog.setScene(scene);
-        dialog.setUserData(wizard);
-        return dialog;
+        ExportXPathWizardController wizard = exportWizard.get();
+        wizard.showYourself(bindToExportWizard(wizard));
     }
 
 
@@ -343,7 +305,10 @@ public class XPathPanelController extends AbstractController {
                            .map(Change::getNewValue)
                            .filter(Objects::nonNull)
                            .map(Language::getDefaultVersion)
-                           .subscribe(parent::setLanguageVersion);
+                           .subscribe(parent::setLanguageVersion)
+                           // Other bindings
+                           .and(exportWizard.bindToRuleBuilder(getRuleBuilder()))
+                           .and(this::bindToParent);
 
     }
 

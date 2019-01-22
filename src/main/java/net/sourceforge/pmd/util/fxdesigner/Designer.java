@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.controllerFactoryKnowing;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -35,7 +37,7 @@ public class Designer extends Application {
         if (!raw.contains("-v")
             && !raw.contains("--verbose")) {
             // error output is disabled by default
-            
+
             System.err.close();
         }
 
@@ -45,7 +47,6 @@ public class Designer extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         parseParameters(getParameters());
-
 
         FXMLLoader loader
             = new FXMLLoader(DesignerUtil.getFxml("designer.fxml"));
@@ -58,27 +59,11 @@ public class Designer extends Application {
         SourceEditorController sourceEditorController = new SourceEditorController(owner, mainController);
         EventLogController eventLogController = new EventLogController(owner, mainController);
 
-        loader.setControllerFactory(type -> {
-            if (type == MainDesignerController.class) {
-                return mainController;
-            } else if (type == NodeInfoPanelController.class) {
-                return nodeInfoPanelController;
-            } else if (type == XPathPanelController.class) {
-                return xpathPanelController;
-            } else if (type == SourceEditorController.class) {
-                return sourceEditorController;
-            } else if (type == EventLogController.class) {
-                return eventLogController;
-            } else {
-                // default behavior for controllerFactory:
-                try {
-                    return type.newInstance();
-                } catch (Exception exc) {
-                    exc.printStackTrace();
-                    throw new RuntimeException(exc); // fatal, just bail...
-                }
-            }
-        });
+        loader.setControllerFactory(controllerFactoryKnowing(mainController,
+                                                             nodeInfoPanelController,
+                                                             xpathPanelController,
+                                                             eventLogController,
+                                                             sourceEditorController));
 
         stage.setOnCloseRequest(e -> mainController.shutdown());
 
