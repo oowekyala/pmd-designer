@@ -20,7 +20,8 @@ import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+
+import com.github.oowekyala.rxstring.ReactfxExtensions;
 
 
 /**
@@ -65,7 +66,8 @@ public class EventLogger {
 
     /** Number of log entries that were not yet examined by the user. */
     public Val<Integer> numNewLogEntriesProperty() {
-        return DesignerUtil.countNotMatching(fullLog.map(LogEntry::wasExaminedProperty));
+        return LiveList.sizeOf(ReactfxExtensions.flattenVals(fullLog.map(LogEntry::wasExaminedProperty))
+                                                .filtered(read -> !read));
     }
 
 
@@ -80,6 +82,7 @@ public class EventLogger {
             latestEvent.push(event);
         }
     }
+
 
     /**
      * Returns the full log.
