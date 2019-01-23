@@ -52,5 +52,4 @@ public class SoftReferenceCache<T> {
     public interface UnsafeSupplier<T> {
         T get() throws Exception;
     }
-
 }

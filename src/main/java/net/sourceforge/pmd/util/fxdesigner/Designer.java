@@ -57,12 +57,10 @@ public class Designer extends Application {
         NodeInfoPanelController nodeInfoPanelController = new NodeInfoPanelController(mainController);
         XPathPanelController xpathPanelController = new XPathPanelController(owner, mainController);
         SourceEditorController sourceEditorController = new SourceEditorController(owner, mainController);
-        EventLogController eventLogController = new EventLogController(owner, mainController);
 
         loader.setControllerFactory(controllerFactoryKnowing(mainController,
                                                              nodeInfoPanelController,
                                                              xpathPanelController,
-                                                             eventLogController,
                                                              sourceEditorController));
 
         stage.setOnCloseRequest(e -> mainController.shutdown());
