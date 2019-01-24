@@ -167,7 +167,7 @@ public class SourceEditorController extends AbstractController {
 
 
     @Override
-    protected void afterParentInit() {
+    public void afterParentInit() {
         DesignerUtil.rewire(astManager.languageVersionProperty(), languageVersionUIProperty);
     }
 

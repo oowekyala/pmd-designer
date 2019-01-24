@@ -35,8 +35,6 @@ public class XpathManagerController extends AbstractController {
     @FXML
     private MutableTabPane<XPathPanelController> xpathEditorsTabPane;
 
-    private Val<ObservableList<Node>> currentXPathResults;
-
 
     public XpathManagerController(DesignerRoot designerRoot, MainDesignerController parent) {
         this.designerRoot = designerRoot;
@@ -49,7 +47,6 @@ public class XpathManagerController extends AbstractController {
 
         xpathEditorsTabPane.setControllerSupplier(() -> new XPathPanelController(designerRoot, this));
 
-        currentXPathResults = selectedEditorProperty().flatMap(XPathPanelController::xpathResultsProperty);
 
         selectedEditorProperty().changes()
                                 .subscribe(ch -> {
@@ -59,6 +56,8 @@ public class XpathManagerController extends AbstractController {
                                         refreshCurrentXPath(ch.getNewValue());
                                     }
                                 });
+
+        Val<ObservableList<Node>> currentXPathResults = selectedEditorProperty().flatMap(XPathPanelController::xpathResultsProperty);
 
         currentXPathResults.changes()
                            .subscribe(ch -> {
@@ -72,8 +71,9 @@ public class XpathManagerController extends AbstractController {
 
 
     @Override
-    protected void afterParentInit() {
+    public void afterParentInit() {
         Platform.runLater(xpathEditorsTabPane::addTabWithNewController);
+        xpathEditorsTabPane.getControllers().forEach(XPathPanelController::afterParentInit);
     }
 
 

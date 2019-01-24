@@ -151,7 +151,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
 
 
     @Override
-    protected void afterParentInit() {
+    public void afterParentInit() {
         bindToParent();
 
         // init autocompletion only after binding to mediator and settings restore

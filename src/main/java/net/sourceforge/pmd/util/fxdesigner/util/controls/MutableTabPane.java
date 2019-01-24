@@ -15,6 +15,7 @@ import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 
 import javafx.application.Platform;
@@ -43,7 +44,7 @@ import javafx.scene.layout.Region;
  *
  * @author Clément Fournier
  */
-public final class MutableTabPane<T extends TitleOwner> extends AnchorPane {
+public final class MutableTabPane<T extends AbstractController & TitleOwner> extends AnchorPane {
 
     /** The TabPane hosting the tabs. */
     private final TabPane tabPane = new TabPane();
@@ -162,6 +163,7 @@ public final class MutableTabPane<T extends TitleOwner> extends AnchorPane {
     private void addTabAndFocus(Tab tab) {
         this.getTabs().add(tab);
         getSelectionModel().select(tab);
+        controllerFromTab(tab).afterParentInit();
     }
 
 
@@ -231,7 +233,6 @@ public final class MutableTabPane<T extends TitleOwner> extends AnchorPane {
             T realController = loader.getController();
             newTab.textProperty().bind(uniqueNameBinding(realController.titleProperty()));
             newTab.setUserData(realController);
-
             return newTab;
         };
 

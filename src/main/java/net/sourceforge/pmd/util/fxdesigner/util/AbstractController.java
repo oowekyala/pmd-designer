@@ -55,7 +55,7 @@ public class AbstractController implements Initializable, SettingsOwner {
      * This also means, after persistent settings restoration. If this node has no
      * parent, then this is never executed.
      */
-    protected void afterParentInit() {
+    public void afterParentInit() {
         // by default do nothing
     }
 
