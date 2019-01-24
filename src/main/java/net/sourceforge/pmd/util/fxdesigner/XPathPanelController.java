@@ -17,14 +17,12 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
-import org.reactfx.Change;
 import org.reactfx.EventStreams;
 import org.reactfx.Subscription;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
-import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.XPathRule;
@@ -38,6 +36,7 @@ import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.LanguageVersionRange;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
@@ -47,6 +46,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.SyntaxHighlightingCodeArea;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.syntaxhighlighting.XPathSyntaxHighlighter;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.PropertyTableView;
+import net.sourceforge.pmd.util.fxdesigner.util.controls.TitleOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.XpathViolationListCell;
 
@@ -82,11 +82,11 @@ import javafx.stage.StageStyle;
  * @see ExportXPathWizardController
  * @since 6.0.0
  */
-public class XPathPanelController extends AbstractController {
+public class XPathPanelController extends AbstractController implements TitleOwner {
 
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
     private final DesignerRoot designerRoot;
-    private final MainDesignerController parent;
+    private final XpathManagerController mediator;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
     private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
@@ -107,10 +107,12 @@ public class XPathPanelController extends AbstractController {
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
 
+    private final Var<ObservableList<Node>> myXpathResults = Var.newSimpleVar(null);
 
-    public XPathPanelController(DesignerRoot owner, MainDesignerController mainController) {
+
+    public XPathPanelController(DesignerRoot owner, XpathManagerController mainController) {
         this.designerRoot = owner;
-        parent = mainController;
+        mediator = mainController;
 
         exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
 
@@ -135,14 +137,14 @@ public class XPathPanelController extends AbstractController {
                     .conditionOn(xpathResultListView.focusedProperty())
                     .filter(Objects::nonNull)
                     .map(TextAwareNodeWrapper::getNode)
-                    .subscribe(parent::onNodeItemSelected);
+                    .subscribe(mediator::onNodeItemSelected);
 
         xpathExpressionArea.richChanges()
                            .filter(t -> !t.isIdentity())
                            .successionEnds(XPATH_REFRESH_DELAY)
                            // Reevaluate XPath anytime the expression or the XPath version changes
                            .or(xpathVersionProperty().changes())
-                           .subscribe(tick -> parent.refreshXPathResults());
+                           .subscribe(tick -> mediator.refreshCurrentXPath(this));
 
 
     }
@@ -152,16 +154,19 @@ public class XPathPanelController extends AbstractController {
     protected void afterParentInit() {
         bindToParent();
 
-        // init autocompletion only after binding to parent and settings restore
+        // init autocompletion only after binding to mediator and settings restore
         // otherwise the popup is shown on startup
-        Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(parent.getLanguageVersion().getLanguage());
+        Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
     }
 
 
-    // Binds the underlying rule parameters to the parent UI, disconnecting it from the wizard if need be
+    // Binds the underlying rule parameters to the mediator UI, disconnecting it from the wizard if need be
     private void bindToParent() {
-        DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(parent.languageVersionProperty(), LanguageVersion::getLanguage));
+        if (getRuleBuilder().compatibleVersionRangeProperty().isEmpty()) {
+            // then the rule we're writing is not language specific yet
+            DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(mediator.globalLanguageVersionProperty(), LanguageVersion::getLanguage));
+        }
 
         DesignerUtil.rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
         DesignerUtil.rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
@@ -244,33 +249,34 @@ public class XPathPanelController extends AbstractController {
      *
      * @param compilationUnit The AST root
      * @param version         The language version
+     *
+     * @return The status, ie an entry with either {@link Category#XPATH_OK} or {@link Category#XPATH_EVALUATION_EXCEPTION}
      */
-    public void evaluateXPath(Node compilationUnit, LanguageVersion version) {
+    public LogEntry evaluateXPath(Node compilationUnit, LanguageVersion version) {
 
         try {
             String xpath = getXpathExpression();
             if (StringUtils.isBlank(xpath)) {
                 invalidateResults(false);
-                return;
+                return new LogEntry(null, Category.XPATH_OK);
             }
 
-            ObservableList<Node> results
-                = FXCollections.observableArrayList(xpathEvaluator.evaluateQuery(compilationUnit,
-                                                                                 version,
-                                                                                 getXpathVersion(),
-                                                                                 xpath,
-                                                                                 ruleBuilder.getRuleProperties()));
-            xpathResultListView.setItems(results.stream().map(parent::wrapNode).collect(Collectors.toCollection(LiveArrayList::new)));
-            parent.highlightXPathResults(results);
-            violationsTitledPane.setTitle("Matched nodes (" + results.size() + ")");
-            // Notify that everything went OK so we can avoid logging very recent exceptions
-            designerRoot.getLogger().logEvent(new LogEntry(null, Category.XPATH_OK));
+            ObservableList<Node> results = FXCollections.observableArrayList(
+                xpathEvaluator.evaluateQuery(compilationUnit,
+                                             version,
+                                             getXpathVersion(),
+                                             xpath,
+                                             ruleBuilder.getRuleProperties())
+            );
+
+            handleNewResults(results);
+            return new LogEntry(null, Category.XPATH_OK);
         } catch (XPathEvaluationException e) {
             invalidateResults(true);
-            designerRoot.getLogger().logEvent(new LogEntry(e, Category.XPATH_EVALUATION_EXCEPTION));
+            return new LogEntry(e, Category.XPATH_EVALUATION_EXCEPTION);
         }
-
     }
+
 
 
     public List<Node> runXPathQuery(Node compilationUnit, LanguageVersion version, String query) throws XPathEvaluationException {
@@ -278,15 +284,25 @@ public class XPathPanelController extends AbstractController {
     }
 
 
+    /** Dual of {@link #invalidateResults(boolean)} */
+    private void handleNewResults(ObservableList<Node> results) {
+        xpathResultListView.setItems(results.stream().map(mediator::wrapNode).collect(Collectors.toCollection(LiveArrayList::new)));
+        this.myXpathResults.setValue(results);
+        violationsTitledPane.setTitle("Matched nodes (" + results.size() + ")");
+    }
+
+
+    /** Dual of {@link #handleNewResults(ObservableList)} */
     public void invalidateResults(boolean error) {
+        this.myXpathResults.setValue(null);
         xpathResultListView.getItems().clear();
-        parent.resetXPathResults();
+        mediator.resetXpathResultsInSourceEditor();
         violationsTitledPane.setTitle("Matched nodes" + (error ? "\t(error)" : ""));
     }
 
 
     /** Show the export wizard, creating it if needed. */
-    public void showExportXPathToRuleWizard() {
+    private void showExportXPathToRuleWizard() {
         ExportXPathWizardController wizard = exportWizard.get();
         wizard.showYourself(bindToExportWizard(wizard));
     }
@@ -297,18 +313,18 @@ public class XPathPanelController extends AbstractController {
      *
      * @param exportWizard The caller
      */
-    public Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
+    private Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
 
-        // Changes: Wizard -> MainDesigner
-        return exportWizard.languageProperty().changes()
-                           .map(Change::getNewValue)
-                           .filter(Objects::nonNull)
-                           .map(Language::getDefaultVersion)
-                           .subscribe(parent::setLanguageVersion)
-                           // Other bindings
-                           .and(exportWizard.bindToRuleBuilder(getRuleBuilder()))
-                           .and(this::bindToParent);
+        // changes of language version in the rule are not reflected
+        // on the editor anymore
 
+        return exportWizard.bindToRuleBuilder(getRuleBuilder()).and(this::bindToParent);
+
+    }
+
+
+    public Val<LanguageVersionRange> compatibleVersionRangeProperty() {
+        return getRuleBuilder().compatibleVersionRangeProperty();
     }
 
 
@@ -350,5 +366,16 @@ public class XPathPanelController extends AbstractController {
     @Override
     public List<SettingsOwner> getChildrenSettingsNodes() {
         return Collections.singletonList(getRuleBuilder());
+    }
+
+
+    @Override
+    public Val<String> titleProperty() {
+        return getRuleBuilder().nameProperty().orElseConst("New rule");
+    }
+
+
+    public Var<ObservableList<Node>> xpathResultsProperty() {
+        return myXpathResults;
     }
 }

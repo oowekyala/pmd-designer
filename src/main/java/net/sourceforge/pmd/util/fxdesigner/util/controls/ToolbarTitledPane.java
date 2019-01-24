@@ -26,7 +26,7 @@ import javafx.scene.layout.StackPane;
  * @author Clément Fournier
  * @since 7.0.0
  */
-public final class ToolbarTitledPane extends TitledPane {
+public final class ToolbarTitledPane extends TitledPane implements TitleOwner {
 
 
     private final ToolBar toolBar = new ToolBar();
@@ -95,6 +95,7 @@ public final class ToolbarTitledPane extends TitledPane {
 
 
     /** Title of the pane, not equivalent to {@link #textProperty()}. */
+    @Override
     public Var<String> titleProperty() {
         return title;
     }

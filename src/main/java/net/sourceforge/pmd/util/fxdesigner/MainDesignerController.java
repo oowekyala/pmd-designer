@@ -21,8 +21,10 @@ import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
+import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
@@ -48,7 +50,6 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
@@ -93,16 +94,12 @@ public class MainDesignerController extends AbstractController {
     private ToggleButton bottomTabsToggle;
     /* Bottom panel */
     @FXML
-    private TabPane bottomTabPane;
-    @FXML
-    private Tab xpathEditorTab;
-    @FXML
     private SplitPane mainHorizontalSplitPane;
     /* Children */
     @FXML
     private NodeInfoPanelController nodeInfoPanelController;
     @FXML
-    private XPathPanelController xpathPanelController;
+    private XpathManagerController xpathManagerController;
     @FXML
     private SourceEditorController sourceEditorController;
     // we cache it but if it's not used the FXML is not created, etc
@@ -196,9 +193,9 @@ public class MainDesignerController extends AbstractController {
         Optional<Node> root = sourceEditorController.refreshAST();
 
         if (root.isPresent()) {
-            xpathPanelController.evaluateXPath(root.get(), getLanguageVersion());
+            xpathManagerController.refreshXPath();
         } else {
-            xpathPanelController.invalidateResults(true);
+            xpathManagerController.invalidateResults(true);
         }
     }
 
@@ -207,7 +204,7 @@ public class MainDesignerController extends AbstractController {
      * Otherwise does nothing.
      */
     public void refreshXPathResults() {
-        sourceEditorController.getCompilationUnit().ifPresent(root -> xpathPanelController.evaluateXPath(root, getLanguageVersion()));
+        sourceEditorController.getCompilationUnit().ifPresent(root -> xpathManagerController.refreshXPath());
     }
 
 
@@ -259,7 +256,11 @@ public class MainDesignerController extends AbstractController {
      */
     public List<Node> runXPathQuery(String query) throws XPathEvaluationException {
         return sourceEditorController.getCompilationUnit()
-                                     .map(n -> xpathPanelController.runXPathQuery(n, getLanguageVersion(), query))
+                                     .map(n -> new XPathEvaluator().evaluateQuery(n,
+                                                                                  getLanguageVersion(),
+                                                                                  XPathRuleQuery.XPATH_2_0,
+                                                                                  query,
+                                                                                  Collections.emptyList()))
                                      .orElseGet(Collections::emptyList);
     }
 
@@ -377,7 +378,7 @@ public class MainDesignerController extends AbstractController {
 
     public void invalidateAst() {
         nodeInfoPanelController.setFocusNode(null);
-        xpathPanelController.invalidateResults(false);
+        xpathManagerController.invalidateResults(false);
         sourceEditorController.setFocusNode(null);
     }
 
@@ -431,21 +432,13 @@ public class MainDesignerController extends AbstractController {
     }
 
 
-    @PersistentProperty
-    public int getBottomTabIndex() {
-        return bottomTabPane.getSelectionModel().getSelectedIndex();
-    }
-
-
-    public void setBottomTabIndex(int i) {
-        if (i >= 0 && i < bottomTabPane.getTabs().size()) {
-            bottomTabPane.getSelectionModel().select(i);
-        }
-    }
-
-
     @Override
     public List<AbstractController> getChildren() {
-        return Arrays.asList(xpathPanelController, sourceEditorController, nodeInfoPanelController);
+        return Arrays.asList(xpathManagerController, sourceEditorController, nodeInfoPanelController);
+    }
+
+
+    public Optional<Node> getCompilationUnit() {
+        return sourceEditorController.getCompilationUnit();
     }
 }

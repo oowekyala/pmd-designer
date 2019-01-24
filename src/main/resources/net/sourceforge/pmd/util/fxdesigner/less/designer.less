@@ -343,7 +343,17 @@
     &:left .tab-header-area {
         -fx-background-insets: 0 1 0 0;
     }
+
+    &.mutable-tab-pane {
+      -fx-open-tab-animation: NONE;
+      -fx-close-tab-animation: NONE;
+
+      .tab.add-tab-fake-tab {
+
+      }
+    }
 }
+
 
 // Useful link: http://www.guigarage.com/2015/11/styling-a-javafx-scrollbar/
 .scroll-bar {
