@@ -77,7 +77,7 @@ public class NodeInfoPanelController extends AbstractController {
     private ListView<MetricResult> metricResultsListView;
     @FXML
     private TreeView<Object> scopeHierarchyTreeView;
-    private MetricEvaluator metricEvaluator = new MetricEvaluator();
+    private final MetricEvaluator metricEvaluator = new MetricEvaluator();
     private Node selectedNode;
 
     public NodeInfoPanelController(MainDesignerController mainController) {

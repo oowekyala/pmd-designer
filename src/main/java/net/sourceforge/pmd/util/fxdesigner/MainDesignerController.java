@@ -23,9 +23,11 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
+import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LimitedSizeStack;
+import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
@@ -77,6 +79,8 @@ public class MainDesignerController extends AbstractController {
     @FXML
     private MenuItem setupAuxclasspathMenuItem;
     @FXML
+    public MenuItem openEventLogMenuItem;
+    @FXML
     private MenuItem openFileMenuItem;
     @FXML
     private MenuItem licenseMenuItem;
@@ -91,8 +95,6 @@ public class MainDesignerController extends AbstractController {
     @FXML
     private TabPane bottomTabPane;
     @FXML
-    private Tab eventLogTab;
-    @FXML
     private Tab xpathEditorTab;
     @FXML
     private SplitPane mainHorizontalSplitPane;
@@ -103,15 +105,16 @@ public class MainDesignerController extends AbstractController {
     private XPathPanelController xpathPanelController;
     @FXML
     private SourceEditorController sourceEditorController;
-    @FXML
-    private EventLogController eventLogPanelController;
+    // we cache it but if it's not used the FXML is not created, etc
+    private final SoftReferenceCache<EventLogController> eventLogController;
 
     // Other fields
-    private Stack<File> recentFiles = new LimitedSizeStack<>(5);
+    private final Stack<File> recentFiles = new LimitedSizeStack<>(5);
 
 
     public MainDesignerController(DesignerRoot owner) {
         this.designerRoot = owner;
+        eventLogController = new SoftReferenceCache<>(() -> new EventLogController(owner, this));
     }
 
     @Override
@@ -133,6 +136,12 @@ public class MainDesignerController extends AbstractController {
         fileMenu.setOnShowing(e -> onFileMenuShowing());
 
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup(designerRoot));
+
+        openEventLogMenuItem.setOnAction(e -> eventLogController.getValue().showPopup());
+        openEventLogMenuItem.textProperty().bind(
+            designerRoot.getLogger().numNewLogEntriesProperty().map(i -> "Exception log (" + (i > 0 ? i : "no") + " new)")
+        );
+
     }
 
 
@@ -192,7 +201,6 @@ public class MainDesignerController extends AbstractController {
             xpathPanelController.invalidateResults(true);
         }
     }
-
 
     /**
      * Refreshes the XPath results if the compilation unit is valid.
@@ -430,12 +438,14 @@ public class MainDesignerController extends AbstractController {
 
 
     public void setBottomTabIndex(int i) {
-        bottomTabPane.getSelectionModel().select(i);
+        if (i >= 0 && i < bottomTabPane.getTabs().size()) {
+            bottomTabPane.getSelectionModel().select(i);
+        }
     }
 
 
     @Override
     public List<AbstractController> getChildren() {
-        return Arrays.asList(xpathPanelController, sourceEditorController, nodeInfoPanelController, eventLogPanelController);
+        return Arrays.asList(xpathPanelController, sourceEditorController, nodeInfoPanelController);
     }
 }
