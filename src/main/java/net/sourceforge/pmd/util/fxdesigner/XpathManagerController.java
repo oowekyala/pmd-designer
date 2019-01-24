@@ -8,6 +8,7 @@ import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.MutableTabPane;
@@ -18,10 +19,12 @@ import javafx.fxml.FXML;
 
 
 /**
- * Controller for all XPath panels. An XPath panel is one of two similar types:
- * * Scratchpad editor: synchronises its language version with the current language version of the app.
- * * Rule editor: bound to a specific language version range and disabled when the editor's current version
- * is unsupported. Also supports editing more metadata.
+ * Controller for all XPath editor. An XPath panel can be in one of two "states":
+ * * Scratchpad: synchronises its language version with the global version of the app.
+ * As soon as the user sets a version range themselves with the export wizard, or if
+ * the rule was loaded from the rule picker, the language version is locked.
+ * * Rule editor: bound to a specific language version range and disabled when the
+ * editor's current version is unsupported.
  *
  * @author Clément Fournier
  */
@@ -48,16 +51,22 @@ public class XpathManagerController extends AbstractController {
 
         currentXPathResults = selectedEditorProperty().flatMap(XPathPanelController::xpathResultsProperty);
 
+        selectedEditorProperty().changes()
+                                .subscribe(ch -> {
+                                    // only the results of the currently opened tab are displayed
+                                    mediator.resetXPathResults();
+                                    if (ch.getNewValue() != null) {
+                                        refreshCurrentXPath(ch.getNewValue());
+                                    }
+                                });
 
-        xpathEditorsTabPane.currentFocusedController()
-                           .changes()
+        currentXPathResults.changes()
                            .subscribe(ch -> {
-                               // only the results of the currently opened tab are displayed
-                               mediator.resetXPathResults();
                                if (ch.getNewValue() != null) {
-                                   refreshCurrentXPath(ch.getNewValue());
+                                   mediator.highlightXPathResults(ch.getNewValue());
                                }
                            });
+
 
     }
 
@@ -94,14 +103,16 @@ public class XpathManagerController extends AbstractController {
         if (editor.equals(selectedEditorProperty().getValue())) {
             mediator.getCompilationUnit()
                     .map(r -> editor.evaluateXPath(r, mediator.getLanguageVersion()))
-                    .ifPresent(designerRoot.getLogger()::logEvent);
+                    .ifPresent(event -> {
+                        designerRoot.getLogger().logEvent(event);
+                        if (event.getCategory() == Category.XPATH_EVALUATION_EXCEPTION) {
+                            mediator.resetXPathResults();
+                        }
+                    });
         }
     }
 
 
-    void resetXpathResultsInSourceEditor() {
-        mediator.resetXPathResults();
-    }
 
 
     public Val<LanguageVersion> globalLanguageVersionProperty() {

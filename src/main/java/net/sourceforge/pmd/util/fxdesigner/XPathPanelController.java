@@ -296,7 +296,6 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     public void invalidateResults(boolean error) {
         this.myXpathResults.setValue(null);
         xpathResultListView.getItems().clear();
-        mediator.resetXpathResultsInSourceEditor();
         violationsTitledPane.setTitle("Matched nodes" + (error ? "\t(error)" : ""));
     }
 
