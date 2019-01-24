@@ -137,7 +137,7 @@ public class MainDesignerController extends AbstractController {
 
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup(designerRoot));
 
-        openEventLogMenuItem.setOnAction(e -> eventLogController.getValue().showPopup());
+        openEventLogMenuItem.setOnAction(e -> eventLogController.get().showPopup());
         openEventLogMenuItem.textProperty().bind(
             designerRoot.getLogger().numNewLogEntriesProperty().map(i -> "Exception log (" + (i > 0 ? i : "no") + " new)")
         );

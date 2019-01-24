@@ -17,23 +17,28 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
+import org.reactfx.Change;
 import org.reactfx.EventStreams;
+import org.reactfx.Subscription;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.util.fxdesigner.model.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.XPathAutocompleteProvider;
@@ -67,8 +72,11 @@ import javafx.stage.StageStyle;
 
 
 /**
- * XPath panel controller. One such controller is a presenter for an {@link ObservableXPathRuleBuilder},
- * which stores all data about one currently edited rule.
+ * XPath panel controller. This object maintains an {@link ObservableRuleBuilder} which stores information
+ * about the currently edited rule. The properties of that builder are rewired to the export wizard's fields
+ * when it's open. The wizard is just one view on the builder's data, which is supposed to offer the most
+ * customization options. Other views can be implemented in a similar way, for example, PropertyView
+ * implements a view over the properties of the builder.
  *
  * @author Clément Fournier
  * @see ExportXPathWizardController
@@ -81,8 +89,7 @@ public class XPathPanelController extends AbstractController {
     private final MainDesignerController parent;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
-
-
+    private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
     @FXML
     public ToolbarTitledPane expressionTitledPane;
     @FXML
@@ -97,7 +104,6 @@ public class XPathPanelController extends AbstractController {
     private ToolbarTitledPane violationsTitledPane;
     @FXML
     private ListView<TextAwareNodeWrapper> xpathResultListView;
-
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
 
@@ -105,6 +111,8 @@ public class XPathPanelController extends AbstractController {
     public XPathPanelController(DesignerRoot owner, MainDesignerController mainController) {
         this.designerRoot = owner;
         parent = mainController;
+
+        exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
 
         getRuleBuilder().setClazz(XPathRule.class);
     }
@@ -159,8 +167,10 @@ public class XPathPanelController extends AbstractController {
         DesignerUtil.rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
 
         DesignerUtil.rewireInit(getRuleBuilder().rulePropertiesProperty(),
-                                propertyTableView.rulePropertiesProperty(), propertyTableView::setRuleProperties);
+                                propertyTableView.rulePropertiesProperty(),
+                                propertyTableView::setRuleProperties);
     }
+
 
     private void initialiseVersionSelection() {
         ToggleGroup xpathVersionToggleGroup = new ToggleGroup();
@@ -226,8 +236,6 @@ public class XPathPanelController extends AbstractController {
     }
 
 
-
-
     /**
      * Evaluate the contents of the XPath expression area
      * on the given compilation unit. This updates the xpath
@@ -277,28 +285,30 @@ public class XPathPanelController extends AbstractController {
     }
 
 
+    /** Show the export wizard, creating it if needed. */
     public void showExportXPathToRuleWizard() {
-        ExportXPathWizardController wizard
-            = new ExportXPathWizardController(xpathExpressionProperty());
+        ExportXPathWizardController wizard = exportWizard.get();
+        wizard.showYourself(bindToExportWizard(wizard));
+    }
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("fxml/xpath-export-wizard.fxml"));
-        loader.setController(wizard);
 
-        final Stage dialog = new Stage();
-        dialog.initOwner(designerRoot.getMainStage());
-        dialog.setOnCloseRequest(e -> wizard.shutdown());
-        dialog.initModality(Modality.WINDOW_MODAL);
+    /**
+     * Binds the properties of the panel to the export wizard.
+     *
+     * @param exportWizard The caller
+     */
+    public Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
 
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Scene scene = new Scene(root);
-        //stage.setTitle("PMD Rule Designer (v " + PMD.VERSION + ')');
-        dialog.setScene(scene);
-        dialog.show();
+        // Changes: Wizard -> MainDesigner
+        return exportWizard.languageProperty().changes()
+                           .map(Change::getNewValue)
+                           .filter(Objects::nonNull)
+                           .map(Language::getDefaultVersion)
+                           .subscribe(parent::setLanguageVersion)
+                           // Other bindings
+                           .and(exportWizard.bindToRuleBuilder(getRuleBuilder()))
+                           .and(this::bindToParent);
+
     }
 
 
