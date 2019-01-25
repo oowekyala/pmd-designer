@@ -4,8 +4,6 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
-import java.util.List;
-
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 
@@ -16,6 +14,7 @@ import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
+import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.MutableTabPane;
 
@@ -43,6 +42,8 @@ public class XpathManagerController extends AbstractController {
 
 
     private ObservableList<ObservableXPathRuleBuilder> xpathRuleBuilders = new LiveArrayList<>();
+    private int restoredTabIndex = 0;
+
 
     public XpathManagerController(DesignerRoot designerRoot, MainDesignerController parent) {
         this.designerRoot = designerRoot;
@@ -92,6 +93,9 @@ public class XpathManagerController extends AbstractController {
                     xpathEditorsTabPane.addTabWithController(new XPathPanelController(designerRoot, this, builder));
                 }
             }
+
+            xpathEditorsTabPane.getSelectionModel().select(restoredTabIndex);
+
             // after restoration they're read-only and got for persistence on closing
             xpathRuleBuilders = xpathEditorsTabPane.getControllers().map(XPathPanelController::getRuleBuilder);
         });
@@ -135,6 +139,17 @@ public class XpathManagerController extends AbstractController {
     }
 
 
+    @PersistentProperty
+    public int getSelectedTabIndex() {
+        return xpathEditorsTabPane.getSelectionModel().getSelectedIndex();
+    }
+
+
+    public void setSelectedTabIndex(int i) {
+        restoredTabIndex = i;
+    }
+
+
     // Persist the rule builders
     // Tab creation on app restore is handled in afterParentInit
     @PersistentSequence
@@ -162,12 +177,4 @@ public class XpathManagerController extends AbstractController {
         selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
     }
 
-
-    @Override
-    public void shutdown() {
-        super.shutdown();
-
-
-
-    }
 }
