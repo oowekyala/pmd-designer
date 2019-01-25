@@ -175,6 +175,7 @@ public class MainDesignerController extends AbstractController {
     }
 
 
+    @Override
     public void shutdown() {
         try {
             SettingsPersistenceUtil.persistProperties(this, DesignerUtil.getSettingsFile());
@@ -182,6 +183,7 @@ public class MainDesignerController extends AbstractController {
             // nevermind
             ioe.printStackTrace();
         }
+        super.shutdown();
     }
 
 

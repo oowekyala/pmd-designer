@@ -91,7 +91,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     private final DesignerRoot designerRoot;
     private final XpathManagerController mediator;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
-    private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
+    private final ObservableXPathRuleBuilder ruleBuilder;
     private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
     @FXML
     public ToolbarTitledPane expressionTitledPane;
@@ -118,12 +118,21 @@ public class XPathPanelController extends AbstractController implements TitleOwn
 
 
     public XPathPanelController(DesignerRoot owner, XpathManagerController mainController) {
+        this(owner, mainController, new ObservableXPathRuleBuilder());
+    }
+
+
+    /**
+     * Creates a controller with an existing rule builder.
+     */
+    public XPathPanelController(DesignerRoot owner, XpathManagerController mainController, ObservableXPathRuleBuilder ruleBuilder) {
         this.designerRoot = owner;
-        mediator = mainController;
+        this.mediator = mainController;
+        this.ruleBuilder = ruleBuilder;
+
+        ruleBuilder.setClazz(XPathRule.class);
 
         exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
-
-        getRuleBuilder().setClazz(XPathRule.class);
     }
 
 
@@ -380,7 +389,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     }
 
 
-    private ObservableXPathRuleBuilder getRuleBuilder() {
+    public ObservableXPathRuleBuilder getRuleBuilder() {
         return ruleBuilder;
     }
 

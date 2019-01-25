@@ -4,14 +4,19 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import java.util.List;
+
+import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
+import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.MutableTabPane;
 
 import javafx.application.Platform;
@@ -36,6 +41,8 @@ public class XpathManagerController extends AbstractController {
     @FXML
     private MutableTabPane<XPathPanelController> xpathEditorsTabPane;
 
+
+    private ObservableList<ObservableXPathRuleBuilder> xpathRuleBuilders = new LiveArrayList<>();
 
     public XpathManagerController(DesignerRoot designerRoot, MainDesignerController parent) {
         this.designerRoot = designerRoot;
@@ -73,8 +80,22 @@ public class XpathManagerController extends AbstractController {
 
     @Override
     public void afterParentInit() {
-        Platform.runLater(xpathEditorsTabPane::addTabWithNewController);
-        xpathEditorsTabPane.getControllers().forEach(XPathPanelController::afterParentInit);
+        Platform.runLater(() -> {
+            // those have just been restored
+            ObservableList<ObservableXPathRuleBuilder> ruleSpecs = getRuleSpecs();
+
+            if (ruleSpecs.isEmpty()) {
+                // add at least one tab
+                xpathEditorsTabPane.addTabWithNewController();
+            } else {
+                for (ObservableXPathRuleBuilder builder : ruleSpecs) {
+                    xpathEditorsTabPane.addTabWithController(new XPathPanelController(designerRoot, this, builder));
+                }
+            }
+            // after restoration they're read-only and got for persistence on closing
+            xpathRuleBuilders = xpathEditorsTabPane.getControllers().map(XPathPanelController::getRuleBuilder);
+        });
+
     }
 
 
@@ -114,6 +135,12 @@ public class XpathManagerController extends AbstractController {
     }
 
 
+    // Persist the rule builders
+    // Tab creation on app restore is handled in afterParentInit
+    @PersistentSequence
+    public ObservableList<ObservableXPathRuleBuilder> getRuleSpecs() {
+        return xpathRuleBuilders;
+    }
 
 
     public Val<LanguageVersion> globalLanguageVersionProperty() {
@@ -133,5 +160,14 @@ public class XpathManagerController extends AbstractController {
 
     public void invalidateResults(boolean error) {
         selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
+    }
+
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+
+
+
     }
 }

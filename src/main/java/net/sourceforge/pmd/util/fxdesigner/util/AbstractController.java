@@ -70,6 +70,17 @@ public class AbstractController implements Initializable, SettingsOwner {
     }
 
 
+    /**
+     * Standard shutdown procedure. Override but call super.shutdown()
+     * to shutdown children recursively.
+     */
+    public void shutdown() {
+        for (AbstractController child : getChildren()) {
+            child.shutdown();
+        }
+    }
+
+
     @Override
     public List<? extends SettingsOwner> getChildrenSettingsNodes() {
         return getChildren();

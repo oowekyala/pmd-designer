@@ -122,10 +122,6 @@ public class RestorePropertyVisitor extends BeanNodeVisitor<SettingsOwner> {
 
         container.addAll(itemsToAdd);
 
-        try {
-            PropertyUtils.setProperty(target, model.getPropertyName(), container);
-        } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-            e.printStackTrace();
-        }
+        // we modified the collection in-place, no need to set the property
     }
 }
