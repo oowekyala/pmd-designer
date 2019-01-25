@@ -348,8 +348,20 @@
       -fx-open-tab-animation: NONE;
       -fx-close-tab-animation: NONE;
 
-      .tab.add-tab-fake-tab {
+      .tab-header-area {
+        .tab {
+          -fx-padding: 0 5 0 5;
+          -fx-border-style: none solid none none;
+          -fx-border-color: @darker-accent-border;
 
+          .tab-close-button {
+            -fx-background-color: @fx-text-fill;
+          }
+        }
+      }
+
+      .add-tab-button .ikonli-font-icon {
+        -fx-fill: @fx-text-fill;
       }
     }
 }

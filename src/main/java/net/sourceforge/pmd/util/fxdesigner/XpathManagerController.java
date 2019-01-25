@@ -24,12 +24,9 @@ import javafx.fxml.FXML;
 
 
 /**
- * Controller for all XPath editor. An XPath panel can be in one of two "states":
- * * Scratchpad: synchronises its language version with the global version of the app.
- * As soon as the user sets a version range themselves with the export wizard, or if
- * the rule was loaded from the rule picker, the language version is locked.
- * * Rule editor: bound to a specific language version range and disabled when the
- * editor's current version is unsupported.
+ * Controller for all XPath editors. Mediator between the main app and
+ * the individual XPath editors. Also handles persisting the editors (under
+ * the form of rule builders).
  *
  * @author Clément Fournier
  */
@@ -114,7 +111,7 @@ public class XpathManagerController extends AbstractController {
 
 
     /**
-     * Called by the main controller.
+     * Called by the main controller to refresh the currently open editor.
      */
     public void refreshXPath() {
         selectedEditorProperty().ifPresent(this::refreshCurrentXPath);
@@ -139,6 +136,38 @@ public class XpathManagerController extends AbstractController {
     }
 
 
+    /**
+     * Language version of the editor, used for synced XPath editors.
+     */
+    public Val<LanguageVersion> globalLanguageVersionProperty() {
+        return mediator.languageVersionProperty();
+    }
+
+
+    public Val<Language> globalLanguageProperty() {
+        return Val.map(globalLanguageVersionProperty(), LanguageVersion::getLanguage);
+    }
+
+
+    private Val<XPathPanelController> selectedEditorProperty() {
+        return xpathEditorsTabPane.currentFocusedController();
+    }
+
+
+    /**
+     * Called by the main editor when the compilation unit is marked invalid.
+     *
+     * @param error
+     */
+    public void invalidateResults(boolean error) {
+        selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
+    }
+
+    /*
+        Persisted properties
+     */
+
+
     @PersistentProperty
     public int getSelectedTabIndex() {
         return xpathEditorsTabPane.getSelectionModel().getSelectedIndex();
@@ -157,24 +186,5 @@ public class XpathManagerController extends AbstractController {
         return xpathRuleBuilders;
     }
 
-
-    public Val<LanguageVersion> globalLanguageVersionProperty() {
-        return mediator.languageVersionProperty();
-    }
-
-
-    public Val<Language> globalLanguageProperty() {
-        return Val.map(globalLanguageVersionProperty(), LanguageVersion::getLanguage);
-    }
-
-
-    private Val<XPathPanelController> selectedEditorProperty() {
-        return xpathEditorsTabPane.currentFocusedController();
-    }
-
-
-    public void invalidateResults(boolean error) {
-        selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
-    }
 
 }

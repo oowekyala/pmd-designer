@@ -101,6 +101,9 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
             newTabButton.setTooltip(new Tooltip("Add new tab"));
             newTabButton.setGraphic(new FontIcon("fas-plus"));
             newTabButton.onActionProperty().set(actionEvent -> addTabWithNewController());
+            // bind bounds to a square that fits inside the header's region
+            newTabButton.maxHeightProperty().bind(headersRegion.heightProperty());
+            newTabButton.maxWidthProperty().bind(headersRegion.heightProperty());
 
             // Rightmost node, grows to fill the rest of the horizontal space
             Pane spring = new Pane();
