@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.XPathRule;
@@ -36,7 +38,6 @@ import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.LanguageVersionRange;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
@@ -58,11 +59,13 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
@@ -94,6 +97,10 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     public ToolbarTitledPane expressionTitledPane;
     @FXML
     public Button exportXpathToRuleButton;
+    @FXML
+    private Label languageLabel;
+    @FXML
+    private ToggleButton syncLanguageToggle;
     @FXML
     private MenuButton xpathVersionMenuButton;
     @FXML
@@ -142,9 +149,13 @@ public class XPathPanelController extends AbstractController implements TitleOwn
         xpathExpressionArea.richChanges()
                            .filter(t -> !t.isIdentity())
                            .successionEnds(XPATH_REFRESH_DELAY)
-                           // Reevaluate XPath anytime the expression or the XPath version changes
+                           // Reevaluate XPath anytime the expression,
+                           // the XPath version or the language version changes
                            .or(xpathVersionProperty().changes())
+                           .or(getRuleBuilder().languageProperty().changes())
                            .subscribe(tick -> mediator.refreshCurrentXPath(this));
+
+        languageLabel.textProperty().bind(getRuleBuilder().languageProperty().map(Language::getName).map(name -> "Language: " + name));
 
 
     }
@@ -158,13 +169,25 @@ public class XPathPanelController extends AbstractController implements TitleOwn
         // otherwise the popup is shown on startup
         Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
+
+        mediator.globalLanguageProperty()
+                .changes()
+                .conditionOn(syncLanguageToggle.selectedProperty())
+                .subscribe(ch -> getRuleBuilder().setLanguage(ch.getNewValue()));
+
+        EventStreams.changesOf(syncLanguageToggle.selectedProperty())
+                    .subscribe(ch -> {
+                        if (ch.getNewValue()) {
+                            getRuleBuilder().setLanguage(mediator.globalLanguageProperty()
+                                                                 .getOrElse(DesignerUtil.defaultLanguageVersion().getLanguage()));
+                        }
+                    });
     }
 
 
     // Binds the underlying rule parameters to the mediator UI, disconnecting it from the wizard if need be
     private void bindToParent() {
-        if (getRuleBuilder().compatibleVersionRangeProperty().isEmpty()) {
-            // then the rule we're writing is not language specific yet
+        if (syncLanguageToggle.isSelected()) {
             DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(mediator.globalLanguageVersionProperty(), LanguageVersion::getLanguage));
         }
 
@@ -314,16 +337,16 @@ public class XPathPanelController extends AbstractController implements TitleOwn
      */
     private Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
 
-        // changes of language version in the rule are not reflected
-        // on the editor anymore
+        return Subscription.multi(
+            // if the language is changed manually in the wizard, the language sync is stopped
+            getRuleBuilder().languageProperty()
+                            .changes()
+                            .subscribe(ch -> syncLanguageToggle.setSelected(false)),
 
-        return exportWizard.bindToRuleBuilder(getRuleBuilder()).and(this::bindToParent);
+            exportWizard.bindToRuleBuilder(getRuleBuilder()),
+            this::bindToParent
+        );
 
-    }
-
-
-    public Val<LanguageVersionRange> compatibleVersionRangeProperty() {
-        return getRuleBuilder().compatibleVersionRangeProperty();
     }
 
 
@@ -370,7 +393,15 @@ public class XPathPanelController extends AbstractController implements TitleOwn
 
     @Override
     public Val<String> titleProperty() {
-        return getRuleBuilder().nameProperty().orElseConst("New rule");
+
+        Val<Function<String, String>> languagePrefix =
+            getRuleBuilder().languageProperty()
+                            .map(Language::getTerseName)
+                            .map(lname -> rname -> lname + "/" + rname);
+
+        return getRuleBuilder().nameProperty()
+                               .orElseConst("NewRule")
+                               .mapDynamic(languagePrefix);
     }
 
 

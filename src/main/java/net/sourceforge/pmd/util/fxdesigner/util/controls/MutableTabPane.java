@@ -20,6 +20,8 @@ import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 
 import javafx.application.Platform;
 import javafx.beans.NamedArg;
+import javafx.beans.binding.Binding;
+import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
@@ -161,8 +163,11 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
 
 
     private void addTabAndFocus(Tab tab) {
+        tab.textProperty().bind(uniqueNameBinding(controllerFromTab(tab).titleProperty(), getTabs().size()));
+
         this.getTabs().add(tab);
         getSelectionModel().select(tab);
+        // Finish the initialisation of the tab
         controllerFromTab(tab).afterParentInit();
     }
 
@@ -185,9 +190,24 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
 
 
     /** Makes the title unique w.r.t. already present tabs. */
-    private Val<String> uniqueNameBinding(Val<String> titleProperty) {
-        // TODO
-        return titleProperty;
+    private Val<String> uniqueNameBinding(Val<String> titleProperty, int tabIdx) {
+        Binding<String> uniqueBinding = Bindings.createStringBinding(
+            () -> {
+                String title = titleProperty.getOrElse("Unnamed");
+                int sameName = 0;
+                LiveList<T> controllers = getControllers();
+                for (int i = 0; i < controllers.size() && i < tabIdx; i++) {
+                    if (title.equals(controllers.get(i).titleProperty().getOrElse("Unnamed"))) {
+                        sameName++;
+                    }
+
+                }
+                return sameName == 0 ? title : title + " (" + sameName + ")";
+            },
+            titleProperty,
+            getTabs()
+        );
+        return Val.wrap(uniqueBinding);
     }
 
 
@@ -231,7 +251,6 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
             newTab.setContent(root);
 
             T realController = loader.getController();
-            newTab.textProperty().bind(uniqueNameBinding(realController.titleProperty()));
             newTab.setUserData(realController);
             return newTab;
         };

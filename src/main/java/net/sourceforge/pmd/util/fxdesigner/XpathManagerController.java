@@ -6,6 +6,7 @@ package net.sourceforge.pmd.util.fxdesigner;
 
 import org.reactfx.value.Val;
 
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
@@ -117,6 +118,11 @@ public class XpathManagerController extends AbstractController {
 
     public Val<LanguageVersion> globalLanguageVersionProperty() {
         return mediator.languageVersionProperty();
+    }
+
+
+    public Val<Language> globalLanguageProperty() {
+        return Val.map(globalLanguageVersionProperty(), LanguageVersion::getLanguage);
     }
 
 

@@ -17,14 +17,11 @@ import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.rules.RuleBuilder;
-import net.sourceforge.pmd.util.fxdesigner.util.LanguageVersionRange;
 import net.sourceforge.pmd.util.fxdesigner.util.PropertyDescriptorSpec;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 
-import javafx.beans.binding.Bindings;
-import javafx.beans.binding.ObjectBinding;
 import javafx.collections.ObservableList;
 
 
@@ -37,7 +34,7 @@ import javafx.collections.ObservableList;
 public class ObservableRuleBuilder implements SettingsOwner {
 
     private final Var<Language> language = Var.newSimpleVar(LanguageRegistry.getDefaultLanguage());
-    private final Var<String> name = Var.newSimpleVar("New rule");
+    private final Var<String> name = Var.newSimpleVar(null);
     private final Var<Class<?>> clazz = Var.newSimpleVar(null);
 
     // doesn't contain the "xpath" and "version" properties for XPath rules
@@ -46,7 +43,6 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
     private final Var<LanguageVersion> minimumVersion = Var.newSimpleVar(null);
     private final Var<LanguageVersion> maximumVersion = Var.newSimpleVar(null);
-    private final Var<LanguageVersionRange> languageVersionRange;
 
 
     private final Var<String> since = Var.newSimpleVar("");
@@ -63,32 +59,6 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
 
     public ObservableRuleBuilder() {
-
-        ObjectBinding<LanguageVersionRange> rangeBinding = Bindings.createObjectBinding(
-            () -> {
-                LanguageVersion min = getMinimumVersion();
-                LanguageVersion max = getMaximumVersion();
-
-                if (min != null || max != null) {
-                    return LanguageVersionRange.boundedBy(min, max);
-                } else if (languageProperty().isPresent()) {
-                    return LanguageVersionRange.allOf(getLanguage());
-                } else {
-                    return null;
-                }
-            },
-            minimumVersionProperty(),
-            maximumVersionProperty(),
-            languageProperty()
-        );
-
-        languageVersionRange = Val.wrap(rangeBinding).asVar(range -> {
-
-            assert range.getLanguage().equals(this.getLanguage());
-
-            this.setMinimumVersion(range.getMin());
-            this.setMaximumVersion(range.getMax());
-        });
 
     }
 
@@ -153,16 +123,6 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
     public Var<ObservableList<PropertyDescriptorSpec>> rulePropertiesProperty() {
         return Var.fromVal(Val.constant(ruleProperties), this::setRuleProperties);
-    }
-
-
-    /**
-     * If empty, then the rule is not bound to any language yet.
-     * If not, the value is the version range this XPath expression
-     * accepts.
-     */
-    public Var<LanguageVersionRange> compatibleVersionRangeProperty() {
-        return languageVersionRange;
     }
 
 
