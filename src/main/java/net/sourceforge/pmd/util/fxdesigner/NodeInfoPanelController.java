@@ -13,21 +13,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.reactfx.EventStreams;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.ast.xpath.Attribute;
-import net.sourceforge.pmd.lang.java.ast.TypeNode;
+import net.sourceforge.pmd.lang.metrics.LanguageMetricsProvider;
 import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.lang.symboltable.Scope;
 import net.sourceforge.pmd.lang.symboltable.ScopedNode;
-import net.sourceforge.pmd.util.fxdesigner.model.MetricEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.model.MetricResult;
 import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
-import net.sourceforge.pmd.util.fxdesigner.util.IteratorUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ScopeHierarchyTreeCell;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ScopeHierarchyTreeItem;
@@ -77,7 +77,7 @@ public class NodeInfoPanelController extends AbstractController {
     private ListView<MetricResult> metricResultsListView;
     @FXML
     private TreeView<Object> scopeHierarchyTreeView;
-    private final MetricEvaluator metricEvaluator = new MetricEvaluator();
+
     private Node selectedNode;
 
     public NodeInfoPanelController(MainDesignerController mainController) {
@@ -209,7 +209,7 @@ public class NodeInfoPanelController extends AbstractController {
             // Otherwise, when you select a node in the scope tree, since focus of the app is shifted to that
             // node, the scope hierarchy is reset and you lose the selection - even though obviously the node
             // you selected is in its own scope hierarchy so it looks buggy.
-            int maxDepth = IteratorUtil.count(IteratorUtil.parentIterator(previousSelection, true));
+            int maxDepth = DesignerIteratorUtil.count(DesignerIteratorUtil.parentIterator(previousSelection, true));
             rootScope.tryFindNode(previousSelection.getValue(), maxDepth)
                      .ifPresent(scopeHierarchyTreeView.getSelectionModel()::select);
         }
@@ -233,11 +233,17 @@ public class NodeInfoPanelController extends AbstractController {
 
 
     private ObservableList<MetricResult> evaluateAllMetrics(Node n) {
-        try {
-            return FXCollections.observableArrayList(metricEvaluator.evaluateAllMetrics(n));
-        } catch (UnsupportedOperationException e) {
+        LanguageMetricsProvider<?, ?> provider = parent.getLanguageVersion().getLanguageVersionHandler().getLanguageMetricsProvider();
+        if (provider == null) {
             return FXCollections.emptyObservableList();
         }
+        List<MetricResult> resultList =
+            provider.computeAllMetricsFor(n)
+                    .entrySet()
+                    .stream()
+                    .map(e -> new MetricResult(e.getKey(), e.getValue()))
+                    .collect(Collectors.toList());
+        return FXCollections.observableArrayList(resultList);
     }
 
 
@@ -277,9 +283,10 @@ public class NodeInfoPanelController extends AbstractController {
             }
         }
 
-        if (node instanceof TypeNode) {
-            result.add("typeIs() = " + ((TypeNode) node).getType());
-        }
+        // TODO maybe put some equivalent to TypeNode inside pmd-core
+        //        if (node instanceof TypeNode) {
+        //            result.add("typeIs() = " + ((TypeNode) node).getType());
+        //        }
         Collections.sort(result);
         return result;
     }
