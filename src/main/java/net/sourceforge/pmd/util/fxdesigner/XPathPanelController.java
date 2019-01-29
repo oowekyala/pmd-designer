@@ -18,8 +18,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
 import org.reactfx.Change;
+import org.reactfx.EventStream;
 import org.reactfx.EventStreams;
 import org.reactfx.Subscription;
+import org.reactfx.SuspendableEventStream;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
@@ -29,14 +31,14 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
-import net.sourceforge.pmd.util.fxdesigner.model.LogEntry;
-import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
-import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
@@ -82,11 +84,9 @@ import javafx.stage.StageStyle;
  * @see ExportXPathWizardController
  * @since 6.0.0
  */
-public class XPathPanelController extends AbstractController {
+public class XPathPanelController extends AbstractController<MainDesignerController> implements NodeSelectionSource {
 
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
-    private final DesignerRoot designerRoot;
-    private final MainDesignerController parent;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
     private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
@@ -107,12 +107,12 @@ public class XPathPanelController extends AbstractController {
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
 
+    private SuspendableEventStream<TextAwareNodeWrapper> selectionEvents;
 
-    public XPathPanelController(DesignerRoot owner, MainDesignerController mainController) {
-        this.designerRoot = owner;
-        parent = mainController;
+    public XPathPanelController(MainDesignerController mainController) {
+        super(mainController);
 
-        exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
+        this.exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(getMainStage()));
 
         getRuleBuilder().setClazz(XPathRule.class);
     }
@@ -131,12 +131,6 @@ public class XPathPanelController extends AbstractController {
 
         exportXpathToRuleButton.setOnAction(e -> showExportXPathToRuleWizard());
 
-        EventStreams.valuesOf(xpathResultListView.getSelectionModel().selectedItemProperty())
-                    .conditionOn(xpathResultListView.focusedProperty())
-                    .filter(Objects::nonNull)
-                    .map(TextAwareNodeWrapper::getNode)
-                    .subscribe(parent::onNodeItemSelected);
-
         xpathExpressionArea.richChanges()
                            .filter(t -> !t.isIdentity())
                            .successionEnds(XPATH_REFRESH_DELAY)
@@ -144,7 +138,7 @@ public class XPathPanelController extends AbstractController {
                            .or(xpathVersionProperty().changes())
                            .subscribe(tick -> parent.refreshXPathResults());
 
-
+        selectionEvents = EventStreams.valuesOf(xpathResultListView.getSelectionModel().selectedItemProperty()).suppressible();
     }
 
 
@@ -187,7 +181,7 @@ public class XPathPanelController extends AbstractController {
             xpathVersionMenuButton.getItems().add(item);
         });
 
-        xpathVersionUIProperty = DesignerUtil.mapToggleGroupToUserData(xpathVersionToggleGroup);
+        xpathVersionUIProperty = DesignerUtil.mapToggleGroupToUserData(xpathVersionToggleGroup, DesignerUtil::defaultXPathVersion);
 
         setXpathVersion(XPathRuleQuery.XPATH_2_0);
     }
@@ -219,7 +213,7 @@ public class XPathPanelController extends AbstractController {
                 popup.setScene(new Scene(root));
                 popup.initStyle(StageStyle.UTILITY);
                 popup.initModality(Modality.WINDOW_MODAL);
-                popup.initOwner(designerRoot.getMainStage());
+                popup.initOwner(getDesignerRoot().getMainStage());
                 popup.show();
             } catch (IOException e1) {
                 throw new RuntimeException(e1);
@@ -233,6 +227,23 @@ public class XPathPanelController extends AbstractController {
                 menu.show(xpathExpressionArea, t.getScreenX(), t.getScreenY());
             }
         });
+    }
+
+
+    @Override
+    public EventStream<NodeSelectionEvent> getSelectionEvents() {
+        return selectionEvents.filter(Objects::nonNull)
+                              .map(TextAwareNodeWrapper::getNode)
+                              .map(n -> new NodeSelectionEvent(n, this));
+    }
+
+
+    @Override
+    public void setFocusNode(Node node) {
+        xpathResultListView.getItems().stream()
+                           .filter(wrapper -> wrapper.getNode().equals(node))
+                           .findFirst()
+                           .ifPresent(item -> selectionEvents.suspendWhile(() -> xpathResultListView.getSelectionModel().select(item)));
     }
 
 
@@ -264,10 +275,10 @@ public class XPathPanelController extends AbstractController {
             parent.highlightXPathResults(results);
             violationsTitledPane.setTitle("Matched nodes (" + results.size() + ")");
             // Notify that everything went OK so we can avoid logging very recent exceptions
-            designerRoot.getLogger().logEvent(new LogEntry(null, Category.XPATH_OK));
+            raiseParsableXPathFlag();
         } catch (XPathEvaluationException e) {
             invalidateResults(true);
-            designerRoot.getLogger().logEvent(new LogEntry(e, Category.XPATH_EVALUATION_EXCEPTION));
+            logUserException(e, Category.XPATH_EVALUATION_EXCEPTION);
         }
 
     }
@@ -351,4 +362,6 @@ public class XPathPanelController extends AbstractController {
     public List<SettingsOwner> getChildrenSettingsNodes() {
         return Collections.singletonList(getRuleBuilder());
     }
+
+
 }

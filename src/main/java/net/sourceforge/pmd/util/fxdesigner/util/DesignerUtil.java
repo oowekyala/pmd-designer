@@ -8,6 +8,7 @@ import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,13 +17,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiPredicate;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.reactfx.EventSource;
+import org.reactfx.EventStream;
 import org.reactfx.Subscription;
 import org.reactfx.value.Var;
 
@@ -37,6 +44,7 @@ import javafx.beans.property.Property;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.util.Callback;
@@ -135,16 +143,37 @@ public final class DesignerUtil {
      * maps the selected toggle property to a Var&lt;T>
      */
     @SuppressWarnings("unchecked")
-    public static <T> Var<T> mapToggleGroupToUserData(ToggleGroup toggleGroup) {
+    public static <T> Var<T> mapToggleGroupToUserData(ToggleGroup toggleGroup, Supplier<T> defaultValue) {
         return Var.fromVal(toggleGroup.selectedToggleProperty(), toggleGroup::selectToggle)
                   .mapBidirectional(
                       item -> (T) item.getUserData(),
-                      t -> toggleGroup.getToggles()
-                                      .stream()
-                                      .filter(toggle -> toggle.getUserData().equals(t))
-                                      .findFirst()
-                                      .orElseThrow(() -> new IllegalStateException("Unknown toggle " + t))
+                      t -> selectFirst(
+                          () -> findToggleWithUserData(toggleGroup, t),
+                          () -> findToggleWithUserData(toggleGroup, defaultValue.get())
+                      )
+                          .orElseThrow(() -> new IllegalStateException("Unknown toggle " + t))
                   );
+    }
+
+
+    /** Returns the first non-empty optional in the arguments, or else Optional.empty. */
+    @SafeVarargs
+    public static <T> Optional<T> selectFirst(Supplier<Optional<T>>... opts) {
+        for (Supplier<Optional<T>> optGetter : opts) {
+            Optional<T> o = optGetter.get();
+            if (o.isPresent()) {
+                return o;
+            }
+        }
+        return Optional.empty();
+    }
+
+
+    private static <T> Optional<Toggle> findToggleWithUserData(ToggleGroup toggleGroup, T data) {
+        return toggleGroup.getToggles()
+                          .stream()
+                          .filter(toggle -> toggle.getUserData().equals(data))
+                          .findFirst();
     }
 
 
@@ -287,5 +316,79 @@ public final class DesignerUtil {
                 throw new RuntimeException(exc); // fatal, just bail...
             }
         };
+    }
+
+
+    /**
+     * Reduces the given stream on the given duration. If reduction of two values is not possible
+     * (canReduce returns false), then the last value is emitted and the new one will
+     * be tested for reduction with the next ones. If no new event is pushed during the duration, the last reduction
+     * result is emitted.
+     */
+    public static <T> EventStream<T> reduceIfPossible(EventStream<T> input, BiPredicate<T, T> canReduce, BinaryOperator<T> reduction, Duration duration) {
+        EventSource<T> source = new EventSource<>();
+
+        input.reduceSuccessions(
+            (last, t) -> {
+                if (canReduce.test(last, t)) {
+                    return reduction.apply(last, t);
+                } else {
+                    source.push(last);
+                    return t;
+                }
+            }, duration)
+             .subscribe(source::push);
+
+        return source;
+    }
+
+
+    /**
+     * Like reduce if possible, but can be used if the events to reduce are emitted in extremely close
+     * succession, so close that some unrelated events may be mixed up. This reduces each new event
+     * with a related event in the pending notification chain instead of just considering the last one
+     * as a possible reduction target.
+     */
+    public static <T> EventStream<T> reduceEntangledIfPossible(EventStream<T> input, BiPredicate<T, T> canReduce, BinaryOperator<T> reduction, Duration duration) {
+        EventSource<T> source = new EventSource<>();
+
+        input.reduceSuccessions(
+            () -> new ArrayList<>(),
+            (List<T> pending, T t) -> {
+
+                for (int i = 0; i < pending.size(); i++) {
+                    if (canReduce.test(pending.get(i), t)) {
+                        pending.set(i, reduction.apply(pending.get(i), t));
+                        return pending;
+                    }
+                }
+                pending.add(t);
+
+                return pending;
+            },
+            duration
+        )
+             .subscribe(pending -> {
+                 for (T t : pending) {
+                     source.push(t);
+                 }
+             });
+
+        return source;
+    }
+
+
+    /**
+     * Returns an event stream that reduces successions of the input stream, and deletes the latest
+     * event if a new event that matches the isCancelSignal predicate is recorded during a reduction
+     * period. Cancel events are also emitted.
+     */
+    public static <T> EventStream<T> deleteOnSignal(EventStream<T> input, Predicate<T> isCancelSignal, Duration duration) {
+        return reduceIfPossible(input, (last, t) -> isCancelSignal.test(t), (last, t) -> t, duration);
+    }
+
+
+    public static <T, R> EventStream<T> mapFilter(EventStream<T> input, Function<? super T, ? extends R> mapper, Predicate<R> filter) {
+        return input.filter(t -> filter.test(mapper.apply(t)));
     }
 }
