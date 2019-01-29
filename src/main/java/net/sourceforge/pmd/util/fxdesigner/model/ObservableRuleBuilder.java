@@ -99,7 +99,7 @@ public class ObservableRuleBuilder implements SettingsOwner {
     }
 
 
-    public void setClazz(Class<?> clazz) {
+    public final void setClazz(Class<?> clazz) {
         this.clazz.setValue(clazz);
     }
 

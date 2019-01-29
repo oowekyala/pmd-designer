@@ -49,7 +49,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.Tab;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
@@ -58,12 +57,9 @@ import javafx.stage.FileChooser;
 
 /**
  * Main controller of the app. Mediator for subdivisions of the UI.
+ * Direct children are the {@link NodeInfoPanelController}, {@link RuleEditorsController}
  *
  * @author Clément Fournier
- * @see NodeInfoPanelController
- * @see SourceEditorController
- * @see EventLogController
- * @see XPathPanelController
  * @since 6.0.0
  */
 @SuppressWarnings("PMD.UnusedPrivateField")
@@ -95,7 +91,7 @@ public class MainDesignerController extends AbstractController<AbstractControlle
     @FXML
     private NodeInfoPanelController nodeInfoPanelController;
     @FXML
-    private XpathManagerController xpathManagerController;
+    private RuleEditorsController ruleEditorsController;
     @FXML
     private SourceEditorController sourceEditorController;
     // we cache it but if it's not used the FXML is not created, etc
@@ -151,7 +147,7 @@ public class MainDesignerController extends AbstractController<AbstractControlle
 
     @Override
     public ObservableSet<? extends NodeSelectionSource> getSubSelectionSources() {
-        return FXCollections.observableSet(nodeInfoPanelController, sourceEditorController, xpathManagerController);
+        return FXCollections.observableSet(nodeInfoPanelController, sourceEditorController, ruleEditorsController);
     }
 
     @Override
@@ -174,18 +170,10 @@ public class MainDesignerController extends AbstractController<AbstractControlle
         Optional<Node> root = sourceEditorController.refreshAST();
 
         if (root.isPresent()) {
-            xpathManagerController.refreshXPath();
+            ruleEditorsController.refreshRuleResults();
         } else {
-            xpathManagerController.invalidateResults(true);
+            ruleEditorsController.invalidateResults(true);
         }
-    }
-
-    /**
-     * Refreshes the XPath results if the compilation unit is valid.
-     * Otherwise does nothing.
-     */
-    public void refreshXPathResults() {
-        sourceEditorController.getCompilationUnit().ifPresent(root -> xpathManagerController.refreshXPath());
     }
 
 
@@ -342,7 +330,7 @@ public class MainDesignerController extends AbstractController<AbstractControlle
      */
     public void invalidateAst() {
         nodeInfoPanelController.setFocusNode(null);
-        xpathManagerController.invalidateResults(false);
+        ruleEditorsController.invalidateResults(false);
         sourceEditorController.setFocusNode(null);
     }
 
@@ -387,7 +375,7 @@ public class MainDesignerController extends AbstractController<AbstractControlle
 
     @Override
     public List<AbstractController<MainDesignerController>> getChildren() {
-        return Arrays.asList(xpathManagerController, sourceEditorController, nodeInfoPanelController);
+        return Arrays.asList(ruleEditorsController, sourceEditorController, nodeInfoPanelController);
     }
 
 

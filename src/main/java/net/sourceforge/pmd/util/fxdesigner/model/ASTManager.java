@@ -74,6 +74,11 @@ public class ASTManager implements ApplicationComponent {
     }
 
 
+    public Var<Node> compilationUnitProperty() {
+        return compilationUnit;
+    }
+
+
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;

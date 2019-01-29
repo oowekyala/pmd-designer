@@ -73,7 +73,7 @@
                                 <fx:include fx:id="sourceEditor" source="editor.fxml" prefHeight="200.0" prefWidth="200.0" />
                             </center>
                         </BorderPane>
-                        <fx:include source="xpath-manager.fxml" fx:id="xpathManager" />
+                        <fx:include source="rule-editors.fxml" fx:id="ruleEditors" />
                     </items>
                 </SplitPane>
             </center>

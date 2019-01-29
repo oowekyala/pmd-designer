@@ -27,24 +27,23 @@ import javafx.fxml.FXML;
 
 
 /**
- * Controller for all XPath editors. Interfaces between the main app and
- * the individual XPath editors. Also handles persisting the editors (under
+ * Controller for all rule editors. Interfaces between the main app and
+ * the individual editors. Also handles persisting the editors (under
  * the form of rule builders).
  *
  * @author Clément Fournier
  */
-public class XpathManagerController extends AbstractController<MainDesignerController> implements CompositeSelectionSource {
+public class RuleEditorsController extends AbstractController<MainDesignerController> implements CompositeSelectionSource {
 
+    private final ObservableSet<XPathRuleEditorController> currentlySelectedController = FXCollections.observableSet();
     @FXML
-    private MutableTabPane<XPathPanelController> xpathEditorsTabPane;
-
-    private final ObservableSet<XPathPanelController> currentlySelectedController = FXCollections.observableSet();
+    private MutableTabPane<XPathRuleEditorController> xpathEditorsTabPane;
 
     private ObservableList<ObservableXPathRuleBuilder> xpathRuleBuilders = new LiveArrayList<>();
     private int restoredTabIndex = 0;
 
 
-    public XpathManagerController(MainDesignerController parent) {
+    public RuleEditorsController(MainDesignerController parent) {
         super(parent);
     }
 
@@ -52,7 +51,7 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
     @Override
     protected void beforeParentInit() {
 
-        xpathEditorsTabPane.setControllerSupplier(() -> new XPathPanelController(this));
+        xpathEditorsTabPane.setControllerSupplier(() -> new XPathRuleEditorController(this));
 
         selectedEditorProperty().changes()
                                 .subscribe(ch -> {
@@ -61,11 +60,11 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
                                     currentlySelectedController.clear();
                                     if (ch.getNewValue() != null) {
                                         currentlySelectedController.add(ch.getNewValue());
-                                        refreshCurrentXPath(ch.getNewValue());
+                                        refreshCurrentEditor(ch.getNewValue());
                                     }
                                 });
 
-        Val<ObservableList<Node>> currentXPathResults = selectedEditorProperty().flatMap(XPathPanelController::xpathResultsProperty);
+        Val<ObservableList<Node>> currentXPathResults = selectedEditorProperty().flatMap(XPathRuleEditorController::xpathResultsProperty);
 
         currentXPathResults.changes()
                            .subscribe(ch -> {
@@ -73,8 +72,6 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
                                    parent.highlightXPathResults(ch.getNewValue());
                                }
                            });
-
-
     }
 
 
@@ -89,14 +86,14 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
                 xpathEditorsTabPane.addTabWithNewController();
             } else {
                 for (ObservableXPathRuleBuilder builder : ruleSpecs) {
-                    xpathEditorsTabPane.addTabWithController(new XPathPanelController(this, builder));
+                    xpathEditorsTabPane.addTabWithController(new XPathRuleEditorController(this, builder));
                 }
             }
 
             xpathEditorsTabPane.getSelectionModel().select(restoredTabIndex);
 
             // after restoration they're read-only and got for persistence on closing
-            xpathRuleBuilders = xpathEditorsTabPane.getControllers().map(XPathPanelController::getRuleBuilder);
+            xpathRuleBuilders = xpathEditorsTabPane.getControllers().map(XPathRuleEditorController::getRuleBuilder);
         });
 
     }
@@ -110,22 +107,18 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
     /**
      * Called by the main controller to refresh the currently open editor.
      */
-    public void refreshXPath() {
-        selectedEditorProperty().ifPresent(this::refreshCurrentXPath);
+    public void refreshRuleResults() {
+        selectedEditorProperty().ifPresent(this::refreshCurrentEditor);
     }
 
 
     /**
-     * Called by the children XPath editors with themselves as parameter.
+     * Called by the children rule editors with themselves as parameter.
      */
-    void refreshCurrentXPath(XPathPanelController editor) {
+    void refreshCurrentEditor(XPathRuleEditorController editor) {
 
         if (editor.equals(selectedEditorProperty().getValue())) {
-            parent.getCompilationUnit().ifPresent(r -> editor.evaluateXPath(r, parent.getLanguageVersion()));
-            //                        if (event.getCategory() == Category.XPATH_EVALUATION_EXCEPTION) {
-            //                            parent.resetXPathResults();
-            //                        }
-            //                    });
+            parent.getCompilationUnit().ifPresent(r -> editor.refreshResults(r, parent.getLanguageVersion()));
         }
     }
 
@@ -143,7 +136,7 @@ public class XpathManagerController extends AbstractController<MainDesignerContr
     }
 
 
-    private Val<XPathPanelController> selectedEditorProperty() {
+    private Val<XPathRuleEditorController> selectedEditorProperty() {
         return xpathEditorsTabPane.currentFocusedController();
     }
 

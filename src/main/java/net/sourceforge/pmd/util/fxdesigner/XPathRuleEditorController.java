@@ -8,7 +8,6 @@ package net.sourceforge.pmd.util.fxdesigner;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -29,10 +28,8 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
-import net.sourceforge.pmd.util.fxdesigner.app.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
@@ -46,7 +43,6 @@ import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.XPathAutocompleteProvider;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.XPathCompletionSource;
-import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.SyntaxHighlightingCodeArea;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.syntaxhighlighting.XPathSyntaxHighlighter;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.PropertyTableView;
@@ -78,7 +74,7 @@ import javafx.stage.StageStyle;
 
 
 /**
- * XPath panel controller. This object maintains an {@link ObservableRuleBuilder} which stores information
+ * Editor for an XPath rule. This object maintains an {@link ObservableRuleBuilder} which stores information
  * about the currently edited rule. The properties of that builder are rewired to the export wizard's fields
  * when it's open. The wizard is just one view on the builder's data, which is supposed to offer the most
  * customization options. Other views can be implemented in a similar way, for example, PropertyView
@@ -88,7 +84,7 @@ import javafx.stage.StageStyle;
  * @see ExportXPathWizardController
  * @since 6.0.0
  */
-public class XPathPanelController extends AbstractController<XpathManagerController> implements NodeSelectionSource, TitleOwner {
+public final class XPathRuleEditorController extends AbstractController<RuleEditorsController> implements NodeSelectionSource, TitleOwner {
 
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
@@ -119,7 +115,7 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
     private SuspendableEventStream<TextAwareNodeWrapper> selectionEvents;
 
 
-    public XPathPanelController(XpathManagerController mainController) {
+    public XPathRuleEditorController(RuleEditorsController mainController) {
         this(mainController, new ObservableXPathRuleBuilder());
     }
 
@@ -127,13 +123,11 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
     /**
      * Creates a controller with an existing rule builder.
      */
-    public XPathPanelController(XpathManagerController mainController, ObservableXPathRuleBuilder ruleBuilder) {
+    public XPathRuleEditorController(RuleEditorsController mainController, ObservableXPathRuleBuilder ruleBuilder) {
         super(mainController);
         this.ruleBuilder = ruleBuilder;
 
         this.exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(getMainStage()));
-
-        getRuleBuilder().setClazz(XPathRule.class);
     }
 
 
@@ -157,7 +151,7 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
                            // the XPath version or the language version changes
                            .or(xpathVersionProperty().changes())
                            .or(getRuleBuilder().languageProperty().changes())
-                           .subscribe(tick -> parent.refreshCurrentXPath(this));
+                           .subscribe(tick -> parent.refreshCurrentEditor(this));
 
         languageLabel.textProperty().bind(getRuleBuilder().languageProperty().map(Language::getName).map(name -> "Language: " + name));
 
@@ -221,7 +215,7 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
 
         xpathVersionUIProperty = DesignerUtil.mapToggleGroupToUserData(xpathVersionToggleGroup, DesignerUtil::defaultXPathVersion);
 
-        setXpathVersion(XPathRuleQuery.XPATH_2_0);
+        xpathVersionProperty().setValue(XPathRuleQuery.XPATH_2_0);
     }
 
 
@@ -296,10 +290,10 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
      *
      * @return The status, ie an entry with either {@link Category#XPATH_OK} or {@link Category#XPATH_EVALUATION_EXCEPTION}
      */
-    public void evaluateXPath(Node compilationUnit, LanguageVersion version) {
+    public void refreshResults(Node compilationUnit, LanguageVersion version) {
 
         try {
-            String xpath = getXpathExpression();
+            String xpath = xpathExpressionProperty().getValue();
             if (StringUtils.isBlank(xpath)) {
                 invalidateResults(false);
                 raiseParsableXPathFlag();
@@ -308,7 +302,7 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
             ObservableList<Node> results = FXCollections.observableArrayList(
                 xpathEvaluator.evaluateQuery(compilationUnit,
                                              version,
-                                             getXpathVersion(),
+                                             xpathVersionProperty().getValue(),
                                              xpath,
                                              ruleBuilder.getRuleProperties())
             );
@@ -370,28 +364,8 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
     }
 
 
-    public String getXpathExpression() {
-        return xpathExpressionArea.getText();
-    }
-
-
-    public void setXpathExpression(String expression) {
-        xpathExpressionArea.replaceText(expression);
-    }
-
-
     public Var<String> xpathExpressionProperty() {
-        return Var.fromVal(xpathExpressionArea.textProperty(), this::setXpathExpression);
-    }
-
-
-    public String getXpathVersion() {
-        return xpathVersionProperty().getValue();
-    }
-
-
-    public void setXpathVersion(String xpathVersion) {
-        xpathVersionProperty().setValue(xpathVersion);
+        return Var.fromVal(xpathExpressionArea.textProperty(), xpathExpressionArea::replaceText);
     }
 
 
@@ -402,12 +376,6 @@ public class XPathPanelController extends AbstractController<XpathManagerControl
 
     public ObservableXPathRuleBuilder getRuleBuilder() {
         return ruleBuilder;
-    }
-
-
-    @Override
-    public List<SettingsOwner> getChildrenSettingsNodes() {
-        return Collections.singletonList(getRuleBuilder());
     }
 
 

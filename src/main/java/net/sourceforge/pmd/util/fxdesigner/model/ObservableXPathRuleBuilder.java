@@ -6,6 +6,7 @@ package net.sourceforge.pmd.util.fxdesigner.model;
 
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
@@ -22,6 +23,9 @@ public class ObservableXPathRuleBuilder extends ObservableRuleBuilder {
     private final Var<String> xpathVersion = Var.newSimpleVar(DesignerUtil.defaultXPathVersion());
     private final Var<String> xpathExpression = Var.newSimpleVar("");
 
+    public ObservableXPathRuleBuilder() {
+        setClazz(XPathRule.class);
+    }
 
     @PersistentProperty
     public String getXpathVersion() {

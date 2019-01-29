@@ -73,7 +73,7 @@ public class XmlInterfaceVersion1 extends XmlInterface {
                     node.addChild(parseSettingsOwnerNode(child));
                 }
             } catch (ClassNotFoundException e) {
-                e.printStackTrace();
+                System.err.println("Child settings node not found:" + e.getMessage());
             }
         }
 

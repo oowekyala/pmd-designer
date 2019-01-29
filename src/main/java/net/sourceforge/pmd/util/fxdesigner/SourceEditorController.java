@@ -79,7 +79,6 @@ public class SourceEditorController extends AbstractController<MainDesignerContr
     private final ASTManager astManager;
 
     private final Var<Node> currentFocusNode = Var.newSimpleVar(null);
-
     private final Var<List<File>> auxclasspathFiles = Var.newSimpleVar(emptyList());
     private final Val<ClassLoader> auxclasspathClassLoader = auxclasspathFiles.map(fileList -> {
         try {
@@ -96,7 +95,6 @@ public class SourceEditorController extends AbstractController<MainDesignerContr
     public SourceEditorController(MainDesignerController mainController) {
         super(mainController);
         astManager = new ASTManager(mainController.getDesignerRoot());
-
     }
 
 

@@ -61,6 +61,8 @@ public final class MutableTabPane<T extends AbstractController<?> & TitleOwner> 
     public MutableTabPane(@NamedArg("tabFxmlContent") String tabFxmlContent) {
         this.tabFxmlResource = Objects.requireNonNull(tabFxmlContent);
 
+        assert DesignerUtil.getFxml(tabFxmlContent) != null;
+
         AnchorPane.setRightAnchor(tabPane, 0d);
         AnchorPane.setLeftAnchor(tabPane, 0d);
         AnchorPane.setBottomAnchor(tabPane, 0d);
@@ -141,7 +143,7 @@ public final class MutableTabPane<T extends AbstractController<?> & TitleOwner> 
      * Currently focused tab.
      */
     public Val<T> currentFocusedController() {
-        return Val.wrap(getSelectionModel().selectedItemProperty()).map(this::controllerFromTab);
+        return Val.map(getSelectionModel().selectedItemProperty(), this::controllerFromTab);
     }
 
 
