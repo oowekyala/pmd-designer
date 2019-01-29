@@ -18,8 +18,10 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
+import org.reactfx.EventStream;
 import org.reactfx.EventStreams;
 import org.reactfx.Subscription;
+import org.reactfx.SuspendableEventStream;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
@@ -29,14 +31,15 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
-import net.sourceforge.pmd.util.fxdesigner.model.LogEntry;
-import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.LogEntry;
+import net.sourceforge.pmd.util.fxdesigner.app.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
-import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
@@ -85,11 +88,9 @@ import javafx.stage.StageStyle;
  * @see ExportXPathWizardController
  * @since 6.0.0
  */
-public class XPathPanelController extends AbstractController implements TitleOwner {
+public class XPathPanelController extends AbstractController<XpathManagerController> implements NodeSelectionSource, TitleOwner {
 
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
-    private final DesignerRoot designerRoot;
-    private final XpathManagerController mediator;
     private final XPathEvaluator xpathEvaluator = new XPathEvaluator();
     private final ObservableXPathRuleBuilder ruleBuilder;
     private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
@@ -115,24 +116,24 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
 
     private final Var<ObservableList<Node>> myXpathResults = Var.newSimpleVar(null);
+    private SuspendableEventStream<TextAwareNodeWrapper> selectionEvents;
 
 
-    public XPathPanelController(DesignerRoot owner, XpathManagerController mainController) {
-        this(owner, mainController, new ObservableXPathRuleBuilder());
+    public XPathPanelController(XpathManagerController mainController) {
+        this(mainController, new ObservableXPathRuleBuilder());
     }
 
 
     /**
      * Creates a controller with an existing rule builder.
      */
-    public XPathPanelController(DesignerRoot owner, XpathManagerController mainController, ObservableXPathRuleBuilder ruleBuilder) {
-        this.designerRoot = owner;
-        this.mediator = mainController;
+    public XPathPanelController(XpathManagerController mainController, ObservableXPathRuleBuilder ruleBuilder) {
+        super(mainController);
         this.ruleBuilder = ruleBuilder;
 
-        ruleBuilder.setClazz(XPathRule.class);
+        this.exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(getMainStage()));
 
-        exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
+        getRuleBuilder().setClazz(XPathRule.class);
     }
 
 
@@ -149,12 +150,6 @@ public class XPathPanelController extends AbstractController implements TitleOwn
 
         exportXpathToRuleButton.setOnAction(e -> showExportXPathToRuleWizard());
 
-        EventStreams.valuesOf(xpathResultListView.getSelectionModel().selectedItemProperty())
-                    .conditionOn(xpathResultListView.focusedProperty())
-                    .filter(Objects::nonNull)
-                    .map(TextAwareNodeWrapper::getNode)
-                    .subscribe(mediator::onNodeItemSelected);
-
         xpathExpressionArea.richChanges()
                            .filter(t -> !t.isIdentity())
                            .successionEnds(XPATH_REFRESH_DELAY)
@@ -162,11 +157,11 @@ public class XPathPanelController extends AbstractController implements TitleOwn
                            // the XPath version or the language version changes
                            .or(xpathVersionProperty().changes())
                            .or(getRuleBuilder().languageProperty().changes())
-                           .subscribe(tick -> mediator.refreshCurrentXPath(this));
+                           .subscribe(tick -> parent.refreshCurrentXPath(this));
 
         languageLabel.textProperty().bind(getRuleBuilder().languageProperty().map(Language::getName).map(name -> "Language: " + name));
 
-
+        selectionEvents = EventStreams.valuesOf(xpathResultListView.getSelectionModel().selectedItemProperty()).suppressible();
     }
 
 
@@ -179,16 +174,16 @@ public class XPathPanelController extends AbstractController implements TitleOwn
         Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
 
-        mediator.globalLanguageProperty()
-                .changes()
-                .conditionOn(syncLanguageToggle.selectedProperty())
-                .subscribe(ch -> getRuleBuilder().setLanguage(ch.getNewValue()));
+        parent.globalLanguageProperty()
+              .changes()
+              .conditionOn(syncLanguageToggle.selectedProperty())
+              .subscribe(ch -> getRuleBuilder().setLanguage(ch.getNewValue()));
 
         EventStreams.changesOf(syncLanguageToggle.selectedProperty())
                     .subscribe(ch -> {
                         if (ch.getNewValue()) {
-                            getRuleBuilder().setLanguage(mediator.globalLanguageProperty()
-                                                                 .getOrElse(DesignerUtil.defaultLanguageVersion().getLanguage()));
+                            getRuleBuilder().setLanguage(parent.globalLanguageProperty()
+                                                               .getOrElse(DesignerUtil.defaultLanguageVersion().getLanguage()));
                         }
                     });
     }
@@ -197,7 +192,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     // Binds the underlying rule parameters to the mediator UI, disconnecting it from the wizard if need be
     private void bindToParent() {
         if (syncLanguageToggle.isSelected()) {
-            DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(mediator.globalLanguageVersionProperty(), LanguageVersion::getLanguage));
+            DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(parent.globalLanguageVersionProperty(), LanguageVersion::getLanguage));
         }
 
         DesignerUtil.rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
@@ -224,7 +219,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
             xpathVersionMenuButton.getItems().add(item);
         });
 
-        xpathVersionUIProperty = DesignerUtil.mapToggleGroupToUserData(xpathVersionToggleGroup);
+        xpathVersionUIProperty = DesignerUtil.mapToggleGroupToUserData(xpathVersionToggleGroup, DesignerUtil::defaultXPathVersion);
 
         setXpathVersion(XPathRuleQuery.XPATH_2_0);
     }
@@ -256,7 +251,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
                 popup.setScene(new Scene(root));
                 popup.initStyle(StageStyle.UTILITY);
                 popup.initModality(Modality.WINDOW_MODAL);
-                popup.initOwner(designerRoot.getMainStage());
+                popup.initOwner(getDesignerRoot().getMainStage());
                 popup.show();
             } catch (IOException e1) {
                 throw new RuntimeException(e1);
@@ -273,6 +268,23 @@ public class XPathPanelController extends AbstractController implements TitleOwn
     }
 
 
+    @Override
+    public EventStream<NodeSelectionEvent> getSelectionEvents() {
+        return selectionEvents.filter(Objects::nonNull)
+                              .map(TextAwareNodeWrapper::getNode)
+                              .map(n -> new NodeSelectionEvent(n, this));
+    }
+
+
+    @Override
+    public void setFocusNode(Node node) {
+        xpathResultListView.getItems().stream()
+                           .filter(wrapper -> wrapper.getNode().equals(node))
+                           .findFirst()
+                           .ifPresent(item -> selectionEvents.suspendWhile(() -> xpathResultListView.getSelectionModel().select(item)));
+    }
+
+
     /**
      * Evaluate the contents of the XPath expression area
      * on the given compilation unit. This updates the xpath
@@ -284,13 +296,13 @@ public class XPathPanelController extends AbstractController implements TitleOwn
      *
      * @return The status, ie an entry with either {@link Category#XPATH_OK} or {@link Category#XPATH_EVALUATION_EXCEPTION}
      */
-    public LogEntry evaluateXPath(Node compilationUnit, LanguageVersion version) {
+    public void evaluateXPath(Node compilationUnit, LanguageVersion version) {
 
         try {
             String xpath = getXpathExpression();
             if (StringUtils.isBlank(xpath)) {
                 invalidateResults(false);
-                return new LogEntry(null, Category.XPATH_OK);
+                raiseParsableXPathFlag();
             }
 
             ObservableList<Node> results = FXCollections.observableArrayList(
@@ -300,12 +312,11 @@ public class XPathPanelController extends AbstractController implements TitleOwn
                                              xpath,
                                              ruleBuilder.getRuleProperties())
             );
-
             handleNewResults(results);
-            return new LogEntry(null, Category.XPATH_OK);
+            raiseParsableXPathFlag();
         } catch (XPathEvaluationException e) {
             invalidateResults(true);
-            return new LogEntry(e, Category.XPATH_EVALUATION_EXCEPTION);
+            logUserException(e, Category.XPATH_EVALUATION_EXCEPTION);
         }
     }
 
@@ -318,7 +329,7 @@ public class XPathPanelController extends AbstractController implements TitleOwn
 
     /** Dual of {@link #invalidateResults(boolean)} */
     private void handleNewResults(ObservableList<Node> results) {
-        xpathResultListView.setItems(results.stream().map(mediator::wrapNode).collect(Collectors.toCollection(LiveArrayList::new)));
+        xpathResultListView.setItems(results.stream().map(parent::wrapNode).collect(Collectors.toCollection(LiveArrayList::new)));
         this.myXpathResults.setValue(results);
         violationsTitledPane.setTitle("Matched nodes (" + results.size() + ")");
     }

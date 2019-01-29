@@ -82,7 +82,7 @@ public class SyntaxHighlightingCodeArea extends CodeArea {
             return;
         }
 
-        syntaxHighlighter.ifPresent(previous -> getStyleClass().remove("." + previous.getLanguageTerseName()));
+        syntaxHighlighter.ifPresent(previous -> getStyleClass().remove(previous.getLanguageTerseName()));
         syntaxAutoRefresh.ifPresent(Subscription::unsubscribe);
 
         if (highlighter == null) {
@@ -93,7 +93,7 @@ public class SyntaxHighlightingCodeArea extends CodeArea {
 
         syntaxHighlighter.setValue(highlighter);
 
-        getStyleClass().add("." + highlighter.getLanguageTerseName());
+        getStyleClass().add(highlighter.getLanguageTerseName());
         syntaxAutoRefresh.setValue(subscribeSyntaxHighlighting(defaultHighlightingTicks(), highlighter));
 
         try { // refresh the highlighting once.

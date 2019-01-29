@@ -2,9 +2,7 @@
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
-package net.sourceforge.pmd.util.fxdesigner;
-
-import net.sourceforge.pmd.util.fxdesigner.model.EventLogger;
+package net.sourceforge.pmd.util.fxdesigner.app;
 
 import javafx.stage.Stage;
 
@@ -15,15 +13,18 @@ import javafx.stage.Stage;
  * @author Clément Fournier
  * @since 6.0.0
  */
-public class DesignerRoot {
+public final class DesignerRoot {
 
 
     private final Stage mainStage;
-    private final EventLogger logger = new EventLogger();
+    private final EventLogger logger;
+    private final boolean developerMode;
 
 
-    public DesignerRoot(Stage mainStage) {
+    public DesignerRoot(Stage mainStage, boolean developerMode) {
         this.mainStage = mainStage;
+        this.developerMode = developerMode;
+        this.logger = new EventLogger(this);
     }
 
 
@@ -44,6 +45,16 @@ public class DesignerRoot {
      */
     public Stage getMainStage() {
         return mainStage;
+    }
+
+
+    /**
+     * If true, some more events are pushed to the event log, and
+     * console streams are open. This is enabled by the -v or --verbose
+     * option on command line for now.
+     */
+    public boolean isDeveloperMode() {
+        return developerMode;
     }
 
 }

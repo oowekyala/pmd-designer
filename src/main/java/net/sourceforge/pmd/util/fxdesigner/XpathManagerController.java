@@ -10,55 +10,57 @@ import org.reactfx.value.Val;
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.util.fxdesigner.model.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.CompositeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
-import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.MutableTabPane;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.ObservableSet;
 import javafx.fxml.FXML;
 
 
 /**
- * Controller for all XPath editors. Mediator between the main app and
+ * Controller for all XPath editors. Interfaces between the main app and
  * the individual XPath editors. Also handles persisting the editors (under
  * the form of rule builders).
  *
  * @author Clément Fournier
  */
-public class XpathManagerController extends AbstractController {
-    private final DesignerRoot designerRoot;
-    private final MainDesignerController mediator;
+public class XpathManagerController extends AbstractController<MainDesignerController> implements CompositeSelectionSource {
 
     @FXML
     private MutableTabPane<XPathPanelController> xpathEditorsTabPane;
 
+    private final ObservableSet<XPathPanelController> currentlySelectedController = FXCollections.observableSet();
 
     private ObservableList<ObservableXPathRuleBuilder> xpathRuleBuilders = new LiveArrayList<>();
     private int restoredTabIndex = 0;
 
 
-    public XpathManagerController(DesignerRoot designerRoot, MainDesignerController parent) {
-        this.designerRoot = designerRoot;
-        this.mediator = parent;
+    public XpathManagerController(MainDesignerController parent) {
+        super(parent);
     }
 
 
     @Override
     protected void beforeParentInit() {
 
-        xpathEditorsTabPane.setControllerSupplier(() -> new XPathPanelController(designerRoot, this));
-
+        xpathEditorsTabPane.setControllerSupplier(() -> new XPathPanelController(this));
 
         selectedEditorProperty().changes()
                                 .subscribe(ch -> {
                                     // only the results of the currently opened tab are displayed
-                                    mediator.resetXPathResults();
+                                    parent.resetXPathResults();
+                                    currentlySelectedController.clear();
                                     if (ch.getNewValue() != null) {
+                                        currentlySelectedController.add(ch.getNewValue());
                                         refreshCurrentXPath(ch.getNewValue());
                                     }
                                 });
@@ -68,7 +70,7 @@ public class XpathManagerController extends AbstractController {
         currentXPathResults.changes()
                            .subscribe(ch -> {
                                if (ch.getNewValue() != null) {
-                                   mediator.highlightXPathResults(ch.getNewValue());
+                                   parent.highlightXPathResults(ch.getNewValue());
                                }
                            });
 
@@ -87,7 +89,7 @@ public class XpathManagerController extends AbstractController {
                 xpathEditorsTabPane.addTabWithNewController();
             } else {
                 for (ObservableXPathRuleBuilder builder : ruleSpecs) {
-                    xpathEditorsTabPane.addTabWithController(new XPathPanelController(designerRoot, this, builder));
+                    xpathEditorsTabPane.addTabWithController(new XPathPanelController(this, builder));
                 }
             }
 
@@ -101,12 +103,7 @@ public class XpathManagerController extends AbstractController {
 
 
     TextAwareNodeWrapper wrapNode(Node node) {
-        return mediator.wrapNode(node);
-    }
-
-
-    void onNodeItemSelected(Node n) {
-        mediator.onNodeItemSelected(n);
+        return parent.wrapNode(node);
     }
 
 
@@ -124,14 +121,11 @@ public class XpathManagerController extends AbstractController {
     void refreshCurrentXPath(XPathPanelController editor) {
 
         if (editor.equals(selectedEditorProperty().getValue())) {
-            mediator.getCompilationUnit()
-                    .map(r -> editor.evaluateXPath(r, mediator.getLanguageVersion()))
-                    .ifPresent(event -> {
-                        designerRoot.getLogger().logEvent(event);
-                        if (event.getCategory() == Category.XPATH_EVALUATION_EXCEPTION) {
-                            mediator.resetXPathResults();
-                        }
-                    });
+            parent.getCompilationUnit().ifPresent(r -> editor.evaluateXPath(r, parent.getLanguageVersion()));
+            //                        if (event.getCategory() == Category.XPATH_EVALUATION_EXCEPTION) {
+            //                            parent.resetXPathResults();
+            //                        }
+            //                    });
         }
     }
 
@@ -140,7 +134,7 @@ public class XpathManagerController extends AbstractController {
      * Language version of the editor, used for synced XPath editors.
      */
     public Val<LanguageVersion> globalLanguageVersionProperty() {
-        return mediator.languageVersionProperty();
+        return parent.languageVersionProperty();
     }
 
 
@@ -156,15 +150,13 @@ public class XpathManagerController extends AbstractController {
 
     /**
      * Called by the main editor when the compilation unit is marked invalid.
-     *
-     * @param error
      */
     public void invalidateResults(boolean error) {
         selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
     }
 
     /*
-        Persisted properties
+     *  Persisted properties
      */
 
 
@@ -187,4 +179,8 @@ public class XpathManagerController extends AbstractController {
     }
 
 
+    @Override
+    public ObservableSet<? extends NodeSelectionSource> getSubSelectionSources() {
+        return currentlySelectedController;
+    }
 }

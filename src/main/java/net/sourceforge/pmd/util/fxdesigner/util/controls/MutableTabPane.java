@@ -15,7 +15,7 @@ import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
-import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 
 import javafx.application.Platform;
@@ -46,7 +46,7 @@ import javafx.scene.layout.Region;
  *
  * @author Clément Fournier
  */
-public final class MutableTabPane<T extends AbstractController & TitleOwner> extends AnchorPane {
+public final class MutableTabPane<T extends AbstractController<?> & TitleOwner> extends AnchorPane {
 
     /** The TabPane hosting the tabs. */
     private final TabPane tabPane = new TabPane();

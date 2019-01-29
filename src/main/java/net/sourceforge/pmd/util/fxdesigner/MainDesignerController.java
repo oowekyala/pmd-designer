@@ -23,10 +23,13 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
+import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.CompositeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
-import net.sourceforge.pmd.util.fxdesigner.util.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LimitedSizeStack;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
@@ -34,11 +37,8 @@ import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
-import javafx.application.Platform;
-import javafx.beans.property.DoubleProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableSet;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -54,7 +54,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
-import javafx.util.Duration;
 
 
 /**
@@ -68,12 +67,7 @@ import javafx.util.Duration;
  * @since 6.0.0
  */
 @SuppressWarnings("PMD.UnusedPrivateField")
-public class MainDesignerController extends AbstractController {
-
-    /**
-     * Callback to the owner.
-     */
-    private final DesignerRoot designerRoot;
+public class MainDesignerController extends AbstractController<AbstractController<?>> implements CompositeSelectionSource {
 
 
     /* Menu bar */
@@ -95,6 +89,8 @@ public class MainDesignerController extends AbstractController {
     /* Bottom panel */
     @FXML
     private SplitPane mainHorizontalSplitPane;
+
+
     /* Children */
     @FXML
     private NodeInfoPanelController nodeInfoPanelController;
@@ -110,9 +106,11 @@ public class MainDesignerController extends AbstractController {
 
 
     public MainDesignerController(DesignerRoot owner) {
-        this.designerRoot = owner;
-        eventLogController = new SoftReferenceCache<>(() -> new EventLogController(owner, this));
+        super(owner, null);
+        eventLogController = new SoftReferenceCache<>(() -> new EventLogController(this));
     }
+
+
 
     @Override
     protected void beforeParentInit() {
@@ -124,19 +122,17 @@ public class MainDesignerController extends AbstractController {
             e.printStackTrace();
         }
 
-        initializeViewAnimation();
-
         licenseMenuItem.setOnAction(e -> showLicensePopup());
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
         fileMenu.setOnShowing(e -> onFileMenuShowing());
 
-        setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup(designerRoot));
+        setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup());
 
         openEventLogMenuItem.setOnAction(e -> eventLogController.get().showPopup());
         openEventLogMenuItem.textProperty().bind(
-            designerRoot.getLogger().numNewLogEntriesProperty().map(i -> "Exception log (" + (i > 0 ? i : "no") + " new)")
+            getLogger().numNewLogEntriesProperty().map(i -> "Event log (" + (i > 0 ? i : "no") + " new)")
         );
 
     }
@@ -147,33 +143,16 @@ public class MainDesignerController extends AbstractController {
         updateRecentFilesMenu();
         refreshAST(); // initial refreshing
         sourceEditorController.moveCaret(0, 0);
+
+        // this is the only place where getSelectionEvents is called
+        getSelectionEvents().distinct().subscribe(n -> CompositeSelectionSource.super.bubbleDown(n));
     }
 
 
-    private void initializeViewAnimation() {
-
-        // gets captured in the closure
-        final double defaultMainHorizontalSplitPaneDividerPosition
-                = mainHorizontalSplitPane.getDividerPositions()[0];
-
-
-        // show/ hide bottom pane
-        bottomTabsToggle.selectedProperty().addListener((observable, wasExpanded, isNowExpanded) -> {
-            KeyValue keyValue = null;
-            DoubleProperty divPosition = mainHorizontalSplitPane.getDividers().get(0).positionProperty();
-            if (wasExpanded && !isNowExpanded) {
-                keyValue = new KeyValue(divPosition, 1);
-            } else if (!wasExpanded && isNowExpanded) {
-                keyValue = new KeyValue(divPosition, defaultMainHorizontalSplitPaneDividerPosition);
-            }
-
-            if (keyValue != null) {
-                Timeline timeline = new Timeline(new KeyFrame(Duration.millis(200), keyValue));
-                timeline.play();
-            }
-        });
+    @Override
+    public ObservableSet<? extends NodeSelectionSource> getSubSelectionSources() {
+        return FXCollections.observableSet(nodeInfoPanelController, sourceEditorController, xpathManagerController);
     }
-
 
     @Override
     public void shutdown() {
@@ -216,26 +195,6 @@ public class MainDesignerController extends AbstractController {
      */
     public TextAwareNodeWrapper wrapNode(Node node) {
         return sourceEditorController.wrapNode(node);
-    }
-
-
-    /**
-     * Executed when the user selects a node in a treeView or listView.
-     */
-    public void onNodeItemSelected(Node selectedValue) {
-        onNodeItemSelected(selectedValue, false);
-    }
-
-
-    /**
-     * Executed when the user selects a node in a treeView or listView.
-     *
-     * @param isFromNameDecl Whether the node was selected in the scope hierarchy treeview
-     */
-    public void onNodeItemSelected(Node selectedValue, boolean isFromNameDecl) {
-        // doing that in parallel speeds it up
-        Platform.runLater(() -> nodeInfoPanelController.setFocusNode(selectedValue, isFromNameDecl));
-        Platform.runLater(() -> sourceEditorController.setFocusNode(selectedValue));
     }
 
 
@@ -318,7 +277,7 @@ public class MainDesignerController extends AbstractController {
     private void onOpenFileClicked() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Load source from file");
-        File file = chooser.showOpenDialog(designerRoot.getMainStage());
+        File file = chooser.showOpenDialog(getMainStage());
         loadSourceFromFile(file);
     }
 
@@ -378,6 +337,9 @@ public class MainDesignerController extends AbstractController {
     }
 
 
+    /**
+     * Called when the AST is updated to update all parts of the UI.
+     */
     public void invalidateAst() {
         nodeInfoPanelController.setFocusNode(null);
         xpathManagerController.invalidateResults(false);
@@ -413,29 +375,18 @@ public class MainDesignerController extends AbstractController {
 
     @PersistentProperty
     public boolean isMaximized() {
-        return designerRoot.getMainStage().isMaximized();
+        return getMainStage().isMaximized();
     }
 
 
     public void setMaximized(boolean b) {
-        designerRoot.getMainStage().setMaximized(!b); // trigger change listener anyway
-        designerRoot.getMainStage().setMaximized(b);
-    }
-
-
-    @PersistentProperty
-    public boolean isBottomTabExpanded() {
-        return bottomTabsToggle.isSelected();
-    }
-
-
-    public void setBottomTabExpanded(boolean b) {
-        bottomTabsToggle.setSelected(b);
+        getMainStage().setMaximized(!b); // trigger change listener anyway
+        getMainStage().setMaximized(b);
     }
 
 
     @Override
-    public List<AbstractController> getChildren() {
+    public List<AbstractController<MainDesignerController>> getChildren() {
         return Arrays.asList(xpathManagerController, sourceEditorController, nodeInfoPanelController);
     }
 
@@ -443,4 +394,10 @@ public class MainDesignerController extends AbstractController {
     public Optional<Node> getCompilationUnit() {
         return sourceEditorController.getCompilationUnit();
     }
+
+    @Override
+    public String getDebugName() {
+        return "MAIN";
+    }
+
 }

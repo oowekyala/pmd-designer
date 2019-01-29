@@ -4,10 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import static net.sourceforge.pmd.internal.util.IteratorUtil.toIterable;
+
 import java.util.Iterator;
-import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -20,40 +19,28 @@ import javafx.scene.control.TreeItem;
  * @author Clément Fournier
  * @since 6.11.0
  */
-public final class IteratorUtil {
+public final class DesignerIteratorUtil {
 
-    private IteratorUtil() {
+    // TODO move that into PMD core with Java 8
+
+
+    private DesignerIteratorUtil() {
 
     }
 
-    public static <T> Iterator<T> reverse(Iterator<T> it) {
-        List<T> tmp = toList(it);
-        Collections.reverse(tmp);
-        return tmp.iterator();
+
+    public static boolean isParent(Node parent, Node child) {
+        return any(parentIterator(child, false), p -> parent == p);
     }
 
-    public static <T> List<T> toList(Iterator<T> it) {
-        List<T> list = new ArrayList<>();
-        while (it.hasNext()) {
-            list.add(it.next());
+
+    public static <T> boolean any(Iterator<? extends T> it, Predicate<? super T> predicate) {
+        for (T t : toIterable(it)) {
+            if (predicate.test(t)) {
+                return true;
+            }
         }
-        return list;
-    }
-
-
-    public static <T> Iterable<T> toIterable(Iterator<T> it) {
-        return () -> it;
-    }
-
-
-    /** Counts the items in this iterator, exhausting it. */
-    public static int count(Iterator<?> it) {
-        int count = 0;
-        while (it.hasNext()) {
-            it.next();
-            count++;
-        }
-        return count;
+        return false;
     }
 
 
