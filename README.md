@@ -23,6 +23,30 @@ If the `bin` directory of your PMD distribution is on your shell's path, then yo
 * `run.sh designer` on Linux/ OSX
 * `designer.bat` on Windows
 
+### Using the artifact
+
+The designer's maven artifact is packaged as a fat jar, which includes all its
+dependencies *except the PMD dependencies* like pmd-core or pmd-java. This
+allows it to be plugged into a PMD distribution easily, but the jar itself is
+**not a runnable jar**.
+
+* To use it with maven, you need to specify the pmd-core dependency separately,
+and any language modules you want to use as well.
+* To use it with `java -jar pmd-ui-X-Y-Z.jar`, you need to add jars for
+pmd-core, the language modules you want to use, and their transitive
+dependencies on the classpath.
+* The main class of the app is `net.sourceforge.pmd.util.fxdesigner.DesignerStarter`
+
+Since this is fairly error-prone the recommended way is to use the PMD
+distribution, which should work out of the box with no configuration needed.
+
+#### Versioning and compatibility
+
+* For now the designer's maven coordinates are `net.sourceforge.pmd:pmd-ui`.
+* The versioning scheme follows that of the main PMD release cycle, meaning if
+you have a pmd-core:6.13.0, you need the pmd-ui:6.13.0 artifact version.
+* That may change in the near future to make it possible to consume new
+designer features by upgrading the designer, without upgrading pmd-core.
 
 ## Usage
 
