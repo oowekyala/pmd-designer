@@ -147,15 +147,4 @@ public class Designer extends Application {
 
         icons.addAll(images);
     }
-
-
-    @SuppressWarnings("PMD.AvoidCatchingThrowable")
-    public static void main(String[] args) {
-        try {
-            launch(args);
-        } catch (Throwable unrecoverable) {
-            unrecoverable.printStackTrace();
-            System.exit(1);
-        }
-    }
 }
