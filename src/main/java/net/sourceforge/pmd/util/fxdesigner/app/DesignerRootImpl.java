@@ -13,6 +13,7 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.util.fxdesigner.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLoggerImpl;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ForgetfulPersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
@@ -53,9 +54,9 @@ public final class DesignerRootImpl implements DesignerRoot {
         mainStage.addEventHandler(KeyEvent.KEY_RELEASED, e -> isCtrlDown.setValue(
             e.isControlDown() && e.getCode() == KeyCode.CONTROL));
 
-        PersistenceManager manager = new OnDiskPersistenceManager(this,
-                                                                  params.getPersistedInputFile(),
-                                                                  params.getPersistedOutputFile());
+        PersistenceManager manager = new ForgetfulPersistenceManager(this,
+                                                                     params.getPersistedInputFile(),
+                                                                     params.getPersistedOutputFile());
 
         registerService(PERSISTENCE_MANAGER, manager);
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
