@@ -195,24 +195,32 @@ public class SourceEditorController extends AbstractController {
             if (n.jjtGetNumChildren() == 0) {
                 break;
             }
+        case "Arguments":
+            if (n.jjtGetParent().getXPathNodeName().equals("ExplicitConstructorInvocation")) {
+                return Collections.singletonList("proposed-removal");
+            } // fallthrough
         case "Expression":
         case "PrimaryExpression":
         case "VariableInitializer":
         case "Type":
         case "ReferenceType":
         case "PrimaryPrefix":
-        case "Arguments":
         case "PrimarySuffix":
+        case "AssignmentOperator":
         case "MemberSelector":
             return Collections.singletonList("removed");
         case "BlockStatement":
-        case "TypeArgument":
         case "Statement":
         case "Annotation":
+            return Collections.singletonList("proposed-removal");
+        case "Name":
+            return "ImportDeclaration".equals(n.jjtGetParent().getXPathNodeName())
+                   ? Collections.singletonList("proposed-removal") : emptyList();
+        case "TypeArgument":
         case "ClassOrInterfaceBodyDeclaration":
         case "AnnotationTypeBodyDeclaration":
         case "TypeDeclaration":
-            return Collections.singletonList("proposed-removal");
+            return Collections.singletonList("proposed-removal-2");
         default:
         }
         return emptySet();
