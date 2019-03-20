@@ -54,7 +54,14 @@ public interface NodeSelectionSource extends ApplicationComponent {
         MessageChannel<NodeSelectionEvent> channel = root.getService(DesignerRoot.NODE_SELECTION_CHANNEL);
         mySelectionEvents.subscribe(n -> channel.pushEvent(this, n));
         EventStream<NodeSelectionEvent> selection = channel.messageStream(alwaysHandleSelection, this);
-        selection.subscribe(evt -> setFocusNode(evt.selected, evt.options));
+        selection.subscribe(evt -> {
+            try {
+                setFocusNode(evt.selected, evt.options);
+            } catch (Exception e) {
+                logInternalException(e);
+                // don't rethrow so that an error by one source doesn't affect others
+            }
+        });
         return ReactfxUtil.latestValue(selection.map(it -> it.selected));
     }
 
