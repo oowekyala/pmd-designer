@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import net.sourceforge.pmd.lang.ast.Node;
 
@@ -45,6 +47,9 @@ public final class DesignerIteratorUtil {
         return false;
     }
 
+    public static <T> Stream<T> toStream(Iterator<T> it) {
+        return StreamSupport.stream(toIterable(it).spliterator(), false);
+    }
 
     /**
      * Returns an iterator over the parents of the given node, in innermost to outermost order.

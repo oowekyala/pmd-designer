@@ -53,6 +53,17 @@ public final class DesignerUtil {
 
     }
 
+    /**
+     * Was added in java 9...
+     */
+    public static <T> Optional<T> or(Optional<T> base, Supplier<Optional<T>> fallback) {
+        if (base.isPresent()) {
+            return base;
+        }
+
+        return fallback.get();
+    }
+
 
     public static String defaultXPathVersion() {
         return XPathRuleQuery.XPATH_2_0;

@@ -4,6 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.codearea;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
+
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Objects;
@@ -134,12 +137,33 @@ public final class PmdCoordinatesSystem {
 
 
     /**
+     * Returns the innermost node that covers the entire given text range
+     * in the given tree.
+     *
+     * @param root  Root of the tree
+     * @param range Range to find
+     * @param exact If true, will only return a node whose range is exactly
+     *              the given text range, otherwise it may be larger
+     */
+    public static Optional<Node> findNodeCovering(Node root, TextRange range, boolean exact) {
+        return findNodeAt(root, range.startPos).map(innermost -> {
+
+            for (Node parent : toIterable(parentIterator(innermost, true))) {
+                if (!exact && rangeOf(parent).includes(range) || exact && rangeOf(parent).equals(range)) {
+                    return parent;
+                }
+            }
+            return null;
+        });
+
+    }
+
+    /**
      * Returns true if the given node contains the position.
      */
     public static boolean contains(Node node, TextPos2D pos) {
-        return startPosition(node).compareTo(pos) <= 0 && endPosition(node).compareTo(pos) >= 0;
+        return rangeOf(node).contains(pos);
     }
-
 
     public static TextPos2D startPosition(Node node) {
         return new TextPos2D(node.getBeginLine(), node.getBeginColumn());
@@ -150,6 +174,54 @@ public final class PmdCoordinatesSystem {
         return new TextPos2D(node.getEndLine(), node.getEndColumn());
     }
 
+
+    public static TextRange rangeOf(Node node) {
+        return new TextRange(startPosition(node), endPosition(node));
+    }
+
+
+    public static final class TextRange {
+
+        public final TextPos2D startPos;
+        public final TextPos2D endPos;
+
+
+        public TextRange(TextPos2D startPos, TextPos2D endPos) {
+            this.startPos = startPos;
+            this.endPos = endPos;
+        }
+
+        public boolean includes(TextRange range) {
+            return startPos.compareTo(range.startPos) <= 0 && endPos.compareTo(range.endPos) >= 0;
+        }
+
+        public boolean contains(TextPos2D pos) {
+            return startPos.compareTo(pos) <= 0 && endPos.compareTo(pos) >= 0;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TextRange textRange = (TextRange) o;
+            return startPos.equals(textRange.startPos) &&
+                endPos.equals(textRange.endPos);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(startPos, endPos);
+        }
+
+        @Override
+        public String toString() {
+            return "[" + startPos + ", " + endPos + ']';
+        }
+    }
 
     /**
      * {@link Position} keeps a reference to the codearea we don't need.
@@ -203,6 +275,10 @@ public final class PmdCoordinatesSystem {
                 && column == that.column;
         }
 
+        @Override
+        public String toString() {
+            return "(" + line + ", " + column + ')';
+        }
 
         @Override
         public int compareTo(TextPos2D o) {
