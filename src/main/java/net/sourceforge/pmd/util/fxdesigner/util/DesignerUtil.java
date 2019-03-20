@@ -4,8 +4,10 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util;
 
+import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -15,6 +17,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.logging.LogManager;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -23,6 +27,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.lang.ast.xpath.Attribute;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
@@ -178,6 +183,17 @@ public final class DesignerUtil {
         Collections.reverse(lines);
 
         return lines.isEmpty() ? Optional.empty() : Optional.of("//" + String.join("/", lines));
+    }
+
+    public static void printShortStackTrace(Throwable e) {
+        printShortStackTrace(e, System.err);
+    }
+
+    public static void printShortStackTrace(Throwable e, PrintStream stream) {
+        List<String> frames = new ArrayList<>(Arrays.asList(ExceptionUtils.getStackFrames(e)));
+        List<String> myFrames = Arrays.asList(ExceptionUtils.getStackFrames(new Throwable()));
+        ExceptionUtils.removeCommonFrames(frames, myFrames);
+        frames.forEach(stream::println);
     }
 
 

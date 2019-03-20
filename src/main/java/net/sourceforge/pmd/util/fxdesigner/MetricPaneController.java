@@ -7,6 +7,7 @@ package net.sourceforge.pmd.util.fxdesigner;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reactfx.EventStreams;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;

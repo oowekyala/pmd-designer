@@ -4,6 +4,10 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.printShortStackTrace;
+
+import java.lang.reflect.InvocationTargetException;
+
 import org.reactfx.EventStream;
 import org.reactfx.value.Val;
 
@@ -70,7 +74,7 @@ public interface NodeSelectionSource extends ApplicationComponent {
                 setFocusNode(evt.selected, evt.options);
             } catch (Exception e) {
                 logInternalException(e);
-                new Throwable("Exception handling a selection event in " + this.getDebugName(), e).printStackTrace();
+                printShortStackTrace(e);
                 // don't rethrow so that an error by one source doesn't affect others
             }
         });
