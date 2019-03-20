@@ -5,5 +5,4 @@
   <groupId>net.sourceforge.pmd</groupId>
   <artifactId>pmd-oldjava</artifactId>
   <version>6.13.0-SNAPSHOT</version>
-  <description>POM was created from install:install-file</description>
 </project>

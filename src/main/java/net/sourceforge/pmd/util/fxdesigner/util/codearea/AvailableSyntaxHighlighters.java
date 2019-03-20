@@ -22,6 +22,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.codearea.syntaxhighlighting.XmlS
  */
 public enum AvailableSyntaxHighlighters {
     JAVA("java", new JavaSyntaxHighlighter()),
+    OLDJAVA("oldjava", new JavaSyntaxHighlighter()),
     APEX("apex", new ApexSyntaxHighlighter()),
     XML("xml", new XmlSyntaxHighlighter()),
     XSL("xsl", new XmlSyntaxHighlighter()),
