@@ -8,7 +8,7 @@ import static java.util.Collections.emptySet;
 import static net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.SelectionOption.SELECTION_RECOVERY;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.findOldNodeInNewAst;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.mapToMyTree;
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 
 import java.util.EnumSet;
@@ -19,6 +19,7 @@ import java.util.function.BiConsumer;
 import org.reactfx.EventSource;
 import org.reactfx.EventStreams;
 import org.reactfx.SuspendableEventStream;
+import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
@@ -44,6 +45,8 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
     private final EventSource<NodeSelectionEvent> baseSelectionEvents;
     private final SuspendableEventStream<NodeSelectionEvent> suppressibleSelectionEvents;
     private final DesignerRoot designerRoot;
+    private final Var<Boolean> highlightFocusParents = Var.newSimpleVar(true);
+    private final Var<Boolean> selectSubtree = Var.newSimpleVar(true);
 
 
     /** Only provided for scenebuilder, not used at runtime. */
@@ -63,6 +66,7 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
 
         // this needs to be done even if the selection originates from this node
         EventStreams.changesOf(getSelectionModel().selectedItemProperty())
+                    .conditionOn(highlightFocusParents)
                     .subscribe(item -> highlightFocusNodeParents((ASTTreeItem) item.getOldValue(), (ASTTreeItem) item.getNewValue()));
 
         // push a node selection event whenever...
@@ -125,6 +129,18 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
         if (!isIndexVisible(selectionModel.getSelectedIndex())) {
             scrollTo(selectionModel.getSelectedIndex());
         }
+    }
+
+    public Var<Boolean> highlightFocusParentsProperty() {
+        return highlightFocusParents;
+    }
+
+    public Boolean getHighlightFocusParents() {
+        return highlightFocusParents.getValue();
+    }
+
+    public void setHighlightFocusParents(boolean highlightFocusParents) {
+        this.highlightFocusParents.setValue(highlightFocusParents);
     }
 
     private void highlightFocusNodeParents(ASTTreeItem oldSelection, ASTTreeItem newSelection) {

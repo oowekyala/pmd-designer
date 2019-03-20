@@ -4,9 +4,11 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.any;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.iteratorFrom;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.reverse;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toStream;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.or;
 import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.endPosition;
 import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.findNodeAt;
@@ -15,8 +17,11 @@ import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSy
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import net.sourceforge.pmd.lang.ast.Node;
+
+import javafx.scene.control.TreeItem;
 
 /**
  * @author Clément Fournier
@@ -93,5 +98,33 @@ public final class AstTraversalUtil {
 
         return currentNewNode.getXPathNodeName().equals(oldSelection.getXPathNodeName())
                ? Optional.of(currentNewNode) : Optional.empty();
+    }
+
+    /**
+     * Returns an iterator over the parents of the given node, in innermost to outermost order.
+     */
+    public static Iterator<Node> parentIterator(Node deepest, boolean includeSelf) {
+        return iteratorFrom(deepest, n -> n.jjtGetParent() != null, Node::jjtGetParent, includeSelf);
+    }
+
+    /**
+     * Returns an iterator over the parents of the given node, in innermost to outermost order.
+     */
+    public static <T> Iterator<TreeItem<T>> parentIterator(TreeItem<T> deepest, boolean includeSelf) {
+        return iteratorFrom(deepest, n -> n.getParent() != null, TreeItem::getParent, includeSelf);
+    }
+
+
+    public static Stream<Node> singleChildPathStream(Node base, boolean outwards) {
+        return outwards ? base.asStream().ancestorsOrSelf().takeWhile(it -> it.jjtGetNumChildren() == 1).toStream()
+                        : toStream(iteratorFrom(base,
+                                                n -> n.jjtGetNumChildren() == 1,
+                                                n -> n.jjtGetChild(0),
+                                                true));
+
+    }
+
+    public static boolean isParent(Node parent, Node child) {
+        return any(parentIterator(child, false), p -> parent == p);
     }
 }

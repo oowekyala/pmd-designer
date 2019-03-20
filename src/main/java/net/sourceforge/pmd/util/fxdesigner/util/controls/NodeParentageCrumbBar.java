@@ -7,7 +7,7 @@ package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.asReversed;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.count;
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 
 import java.util.Set;
 import java.util.function.Function;

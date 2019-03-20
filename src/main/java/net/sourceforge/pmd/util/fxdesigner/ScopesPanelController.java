@@ -4,7 +4,7 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 
 import java.util.Objects;
 import java.util.Set;

@@ -4,7 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.codearea;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.singleChildPathStream;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.last;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 
 import java.util.Collection;
@@ -13,6 +15,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.fxmisc.richtext.CodeArea;
 import org.fxmisc.richtext.model.Paragraph;
@@ -20,6 +23,7 @@ import org.fxmisc.richtext.model.TwoDimensional.Bias;
 import org.fxmisc.richtext.model.TwoDimensional.Position;
 
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil;
 
 
 /**
@@ -142,21 +146,35 @@ public final class PmdCoordinatesSystem {
      *
      * @param root  Root of the tree
      * @param range Range to find
-     * @param exact If true, will only return a node whose range is exactly
-     *              the given text range, otherwise it may be larger
+     * @param exact If true, will return the *outermost* node whose range
+     *              is *exactly* the given text range, otherwise it may be larger.
      */
     public static Optional<Node> findNodeCovering(Node root, TextRange range, boolean exact) {
         return findNodeAt(root, range.startPos).map(innermost -> {
-
             for (Node parent : toIterable(parentIterator(innermost, true))) {
-                if (!exact && rangeOf(parent).includes(range) || exact && rangeOf(parent).equals(range)) {
+                if (!exact && rangeOf(parent).includes(range)) {
                     return parent;
+                } else if (exact && rangeOf(parent).equals(range)) {
+                    return findHighestSameRangeParent(parent);
                 }
             }
             return null;
         });
-
     }
+
+    public static Stream<Node> sameRangePathStream(Node base, boolean outwards) {
+        TextRange range = rangeOf(base);
+        return DesignerIteratorUtil.takeWhile(singleChildPathStream(base, outwards), it -> range.equals(rangeOf(it)));
+    }
+
+    private static Node findHighestSameRangeParent(Node base) {
+        return last(sameRangePathStream(base, true).iterator());
+    }
+
+    private static Node findLowestSameRangeParent(Node base) {
+        return last(sameRangePathStream(base, false).iterator());
+    }
+
 
     /**
      * Returns true if the given node contains the position.
