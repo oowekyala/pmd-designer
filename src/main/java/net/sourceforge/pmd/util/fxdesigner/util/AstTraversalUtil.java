@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.TextPos2D;
 
 import javafx.scene.control.TreeItem;
 
@@ -46,27 +47,23 @@ public final class AstTraversalUtil {
      * @param myRoot (Nullable) root of the tree in which to search
      * @param node   (Nullable) node to look for
      */
-    public static Optional<Node> mapToMyTree(final Node myRoot, final Node node) {
+    public static Optional<Node> mapToMyTree(final Node myRoot, final Node node, TextPos2D caretPositionOrNull) {
         if (myRoot == null || node == null) {
             return Optional.empty();
         }
 
-        if (AstTraversalUtil.getRoot(node) == myRoot) {
-            return Optional.of(node); // same tree
-        } else {
-            return
-                or(
-                    or(
-                        // first try with path
-                        findOldNodeInNewAst(node, myRoot),
-                        // then try with exact range
-                        () -> findNodeCovering(myRoot, rangeOf(node), true)
-                    ),
-                    // fallback on leaf if nothing works
-                    () -> findNodeAt(myRoot, endPosition(node)
-                    )
-                );
-        }
+        return AstTraversalUtil.getRoot(node) == myRoot
+               ? Optional.of(node) // same tree
+               : or(
+                   or(
+                       // first try with path
+                       findOldNodeInNewAst(node, myRoot),
+                       // then try with exact range
+                       () -> findNodeCovering(myRoot, rangeOf(node), true)
+                   ),
+                   // fallback on leaf if nothing works
+                   () -> findNodeAt(myRoot, caretPositionOrNull == null ? endPosition(node) : caretPositionOrNull)
+               );
     }
 
 
@@ -116,7 +113,11 @@ public final class AstTraversalUtil {
 
 
     public static Stream<Node> singleChildPathStream(Node base, boolean outwards) {
-        return outwards ? base.asStream().ancestorsOrSelf().takeWhile(it -> it.jjtGetNumChildren() == 1).toStream()
+        return outwards ? base.asStream()
+                              .ancestors()
+                              .takeWhile(it -> it.jjtGetNumChildren() == 1)
+                              .prepend(base.asStream())
+                              .toStream()
                         : toStream(iteratorFrom(base,
                                                 n -> n.jjtGetNumChildren() == 1,
                                                 n -> n.jjtGetChild(0),

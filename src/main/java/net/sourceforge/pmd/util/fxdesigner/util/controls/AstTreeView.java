@@ -4,16 +4,12 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
-import static java.util.Collections.emptySet;
-import static net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.SelectionOption.SELECTION_RECOVERY;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.findOldNodeInNewAst;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.mapToMyTree;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 
-import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.reactfx.EventSource;
@@ -24,6 +20,7 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 
 import javafx.beans.NamedArg;
 import javafx.scene.control.SelectionModel;
@@ -98,8 +95,8 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
         if (root != null && selectedTreeItem != null && selectedTreeItem.getValue() != null) {
             Node newSelection = findOldNodeInNewAst(selectedTreeItem.getValue(), root).orElse(null);
             if (newSelection != null) {
-                baseSelectionEvents.push(NodeSelectionEvent.of(newSelection, EnumSet.of(SELECTION_RECOVERY)));
-                setFocusNode(newSelection, emptySet()); // rehandle
+                baseSelectionEvents.push(NodeSelectionEvent.of(newSelection, new DataHolder().withData(SELECTION_RECOVERY, true)));
+                setFocusNode(newSelection, new DataHolder()); // rehandle
             } else {
                 baseSelectionEvents.push(NodeSelectionEvent.of(null));
             }
@@ -110,14 +107,14 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
      * Focus the given node, handling scrolling if needed.
      */
     @Override
-    public void setFocusNode(final Node node, Set<SelectionOption> options) {
+    public void setFocusNode(final Node node, DataHolder options) {
         SelectionModel<TreeItem<Node>> selectionModel = getSelectionModel();
 
         if (getRoot() == null || getRoot().getValue() == null) {
             return;
         }
 
-        mapToMyTree(getRoot().getValue(), node)
+        mapToMyTree(getRoot().getValue(), node, options.getData(CARET_POSITION))
             .map(((ASTTreeItem) getRoot())::findItem)
             .ifPresent(found -> {
                 // don't fire any selection event while itself setting the selected item

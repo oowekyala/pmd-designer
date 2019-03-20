@@ -127,7 +127,6 @@ public interface ApplicationComponent {
     default void logInternalException(Throwable throwable) {
         if (isDeveloperMode()) {
             getLogger().logEvent(LogEntry.createInternalExceptionEntry(throwable));
-            throwable.printStackTrace();
         }
     }
 

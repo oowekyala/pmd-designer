@@ -5,11 +5,10 @@
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
 
+import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.asReversed;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.count;
-import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 
-import java.util.Set;
 import java.util.function.Function;
 
 import org.controlsfx.control.BreadCrumbBar;
@@ -19,6 +18,7 @@ import org.reactfx.value.Val;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 
 import javafx.beans.NamedArg;
 import javafx.css.PseudoClass;
@@ -104,7 +104,7 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
      * the node to be the deepest one of the crumb bar. Noop if node is null.
      */
     @Override
-    public void setFocusNode(Node node, Set<SelectionOption> options) {
+    public void setFocusNode(final Node node, DataHolder options) {
         if (node == null) {
             return;
         }
@@ -128,7 +128,7 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
             Node n = (Node) ((TreeItem<?>) button.getUserData()).getValue();
             // when recovering from a selection it's impossible that the node be found,
             // updating the style would cause visible twitching
-            if (!options.contains(SelectionOption.SELECTION_RECOVERY)) {
+            if (!options.hasData(SELECTION_RECOVERY)) {
                 // set the focus on the one being selected, remove on the others
                 // calling requestFocus would switch the focus from eg the treeview to the crumb bar (unusable)
                 button.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), node.equals(n));

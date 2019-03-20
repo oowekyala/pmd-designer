@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +41,7 @@ import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
@@ -236,7 +236,7 @@ public class XPathPanelController extends AbstractController implements NodeSele
     }
 
     @Override
-    public void setFocusNode(Node node, Set<SelectionOption> options) {
+    public void setFocusNode(final Node node, DataHolder options) {
         Optional<TextAwareNodeWrapper> firstResult = xpathResultListView.getItems().stream()
                            .filter(wrapper -> wrapper.getNode().equals(node))
                            .findFirst();

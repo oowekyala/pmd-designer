@@ -16,7 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
@@ -34,6 +33,7 @@ import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.app.services.RichTextMapper;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.AvailableSyntaxHighlighters;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.HighlightLayerCodeArea;
@@ -121,7 +121,9 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
 
                 TextPos2D target = getPmdLineAndColumnFromOffset(this, ev.getCharacterIndex());
 
-                findNodeAt(currentRoot, target).map(NodeSelectionEvent::of).ifPresent(selectionEvts::push);
+                findNodeAt(currentRoot, target)
+                    .map(n -> NodeSelectionEvent.of(n, new DataHolder().withData(CARET_POSITION, target)))
+                    .ifPresent(selectionEvts::push);
             }
         );
 
@@ -229,12 +231,12 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
 
 
     @Override
-    public void setFocusNode(Node node, Set<SelectionOption> options) {
+    public void setFocusNode(final Node node, DataHolder options) {
 
 
         // editor must not be scrolled when finding a new selection in a
         // tree that is being edited
-        if (node != null && !options.contains(SelectionOption.SELECTION_RECOVERY)) {
+        if (node != null && !options.hasData(SELECTION_RECOVERY)) {
             scrollToNode(node);
         }
 

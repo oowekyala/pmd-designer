@@ -4,15 +4,14 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app;
 
-import static java.util.Collections.emptySet;
-
-import java.util.Set;
-
 import org.reactfx.EventStream;
 import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.XPathPanelController;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder.DataKey;
+import net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.TextPos2D;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
@@ -28,12 +27,26 @@ import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
  */
 public interface NodeSelectionSource extends ApplicationComponent {
 
+    /**
+     * This selection is the reselection of a node across a parsing.
+     * Stuff like scrolling or external style changes should be avoided,
+     * only the internal model should be affected.
+     */
+    DataKey<Boolean> SELECTION_RECOVERY = new DataKey<>("isSelectionRecover");
+
+
+    /**
+     * The position of the caret, when the selection is carried out from
+     * the code area.
+     */
+    DataKey<TextPos2D> CARET_POSITION = new DataKey<>("caretPosition");
+
 
     /**
      * Updates the UI to react to a change in focus node. This is called whenever some selection source
      * in the tree records a change.
      */
-    void setFocusNode(Node node, Set<SelectionOption> options);
+    void setFocusNode(Node node, DataHolder options);
 
 
     /**
@@ -45,8 +58,6 @@ public interface NodeSelectionSource extends ApplicationComponent {
      * @param mySelectionEvents     Stream of nodes that should push an event each time the user selects a node
      *                              from this control. The whole app will sync to this new selection.
      * @param alwaysHandleSelection Whether the component should handle selection events that originated from itself.
-     *                              For now some must, because they aggregate several selection sources (the {@link net.sourceforge.pmd.util.fxdesigner.NodeInfoPanelController}).
-     *                              Splitting it into separate controls will remove the need for that.
      */
     default Val<Node> initNodeSelectionHandling(DesignerRoot root,
                                                 EventStream<? extends NodeSelectionEvent> mySelectionEvents,
@@ -59,6 +70,7 @@ public interface NodeSelectionSource extends ApplicationComponent {
                 setFocusNode(evt.selected, evt.options);
             } catch (Exception e) {
                 logInternalException(e);
+                new Throwable("Exception handling a selection event in " + this.getDebugName(), e).printStackTrace();
                 // don't rethrow so that an error by one source doesn't affect others
             }
         });
@@ -66,23 +78,15 @@ public interface NodeSelectionSource extends ApplicationComponent {
     }
 
 
-    enum SelectionOption {
-        /**
-         * This selection is the reselection of a node across a parsing.
-         * Stuff like scrolling or external style changes should be avoided,
-         * only the internal model should be affected.
-         */
-        SELECTION_RECOVERY
-    }
 
     class NodeSelectionEvent {
 
         // RRR data class
 
         public final Node selected;
-        public final Set<SelectionOption> options;
+        public final DataHolder options;
 
-        private NodeSelectionEvent(Node selected, Set<SelectionOption> options) {
+        private NodeSelectionEvent(Node selected, DataHolder options) {
             this.selected = selected;
             this.options = options;
         }
@@ -93,10 +97,10 @@ public interface NodeSelectionSource extends ApplicationComponent {
         }
 
         public static NodeSelectionEvent of(Node selected) {
-            return new NodeSelectionEvent(selected, emptySet());
+            return new NodeSelectionEvent(selected, new DataHolder());
         }
 
-        public static NodeSelectionEvent of(Node selected, Set<SelectionOption> options) {
+        public static NodeSelectionEvent of(Node selected, DataHolder options) {
             return new NodeSelectionEvent(selected, options);
         }
     }
