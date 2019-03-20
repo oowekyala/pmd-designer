@@ -13,6 +13,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeParentageCrumbBar?>
+<?import javafx.scene.control.Label?>
 <BorderPane xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="net.sourceforge.pmd.util.fxdesigner.SourceEditorController">
@@ -68,6 +69,9 @@
                                     AnchorPane.leftAnchor="0.0"
                                     AnchorPane.rightAnchor="0.0"
                                     AnchorPane.topAnchor="0.0">
+                                <toolbarItems>
+                                    <Label fx:id="numNewNodesLabel"/>
+                                </toolbarItems>
 
                                 <AstTreeView fx:id="astTreeView" highlightFocusParents="false"/>
 
@@ -84,6 +88,9 @@
                                     AnchorPane.leftAnchor="0.0"
                                     AnchorPane.rightAnchor="0.0"
                                     AnchorPane.topAnchor="0.0">
+                                <toolbarItems>
+                                    <Label fx:id="numOldNodesLabel" />
+                                </toolbarItems>
 
                                 <AstTreeView fx:id="oldAstTreeView" highlightFocusParents="false"/>
 

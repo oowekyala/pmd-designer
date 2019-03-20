@@ -13,6 +13,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewir
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -41,6 +42,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.VetoableEventStream;
 
 import javafx.fxml.FXML;
+import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleGroup;
@@ -68,6 +70,10 @@ public class SourceEditorController extends AbstractController {
             return SourceEditorController.class.getClassLoader();
         }
     });
+    @FXML
+    private Label numNewNodesLabel;
+    @FXML
+    private Label numOldNodesLabel;
     @FXML
     private AstTreeView oldAstTreeView;
     @FXML
@@ -151,6 +157,22 @@ public class SourceEditorController extends AbstractController {
                     + "    int i = 0;\n"
                     + "}");
 
+
+        astManager.compilationUnitProperty().values().emitBothOnEach(oldAstManager.compilationUnitProperty().values())
+                  .subscribe(n -> {
+                      Node newAst = n._1;
+                      Node oldAst = n._2;
+                      if (newAst != null && oldAst != null) {
+                          int newCount = newAst.descendantStream().count();
+                          int oldCount = oldAst.descendantStream().count();
+                          double change = newCount * 100.0 / oldCount;
+                          String percentChange = new DecimalFormat("##.#").format(change) + "% of old";
+
+                          numNewNodesLabel.textProperty().setValue("(" + newCount + " nodes, " + percentChange + ")");
+                          numOldNodesLabel.textProperty().setValue("(" + oldCount + " nodes)");
+                      }
+
+                  });
     }
 
 
