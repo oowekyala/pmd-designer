@@ -66,6 +66,10 @@ public class SourceEditorController extends AbstractController {
         }
     });
     @FXML
+    private AstTreeView oldAstTreeView;
+    @FXML
+    private ToolbarTitledPane oldAstTitledPane;
+    @FXML
     private ToolbarTitledPane astTitledPane;
     @FXML
     private ToolbarTitledPane editorTitledPane;

@@ -62,6 +62,10 @@ public final class LanguageRegistryUtil {
         if (supportedLanguageVersions == null) {
             List<LanguageVersion> languageVersions = new ArrayList<>();
             for (LanguageVersion languageVersion : LanguageRegistry.findAllVersions()) {
+                if (languageVersion.getLanguage().getTerseName().equals("oldjava")) {
+                    // FORBID explicit old java selection
+                    continue;
+                }
                 Optional.ofNullable(languageVersion.getLanguageVersionHandler())
                         .map(handler -> handler.getParser(handler.getDefaultParserOptions()))
                         .filter(Parser::canParse)

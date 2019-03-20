@@ -57,23 +57,40 @@
                         </ToolbarTitledPane>
                     </children>
                 </AnchorPane>
-                <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
-                    <children>
-                        <ToolbarTitledPane
-                                collapsible="false"
-                                title="Abstract Syntax Tree"
-                                fx:id="astTitledPane"
-                                styleClass="full-size-title"
-                                AnchorPane.bottomAnchor="0.0"
-                                AnchorPane.leftAnchor="0.0"
-                                AnchorPane.rightAnchor="0.0"
-                                AnchorPane.topAnchor="0.0">
+                <SplitPane orientation="VERTICAL">
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
+                        <children>
+                            <ToolbarTitledPane
+                                    collapsible="false"
+                                    title="Abstract Syntax Tree (7.0.x)"
+                                    fx:id="astTitledPane"
+                                    AnchorPane.bottomAnchor="0.0"
+                                    AnchorPane.leftAnchor="0.0"
+                                    AnchorPane.rightAnchor="0.0"
+                                    AnchorPane.topAnchor="0.0">
 
-                            <AstTreeView fx:id="astTreeView" />
+                                <AstTreeView fx:id="astTreeView"/>
 
-                        </ToolbarTitledPane>
-                    </children>
-                </AnchorPane>
+                            </ToolbarTitledPane>
+                        </children>
+                    </AnchorPane>
+                    <AnchorPane minHeight="0.0" minWidth="0.0" prefHeight="160.0" prefWidth="100.0">
+                        <children>
+                            <ToolbarTitledPane
+                                    collapsible="false"
+                                    title="Abstract Syntax Tree (6.0.x)"
+                                    fx:id="oldAstTitledPane"
+                                    AnchorPane.bottomAnchor="0.0"
+                                    AnchorPane.leftAnchor="0.0"
+                                    AnchorPane.rightAnchor="0.0"
+                                    AnchorPane.topAnchor="0.0">
+
+                                <AstTreeView fx:id="oldAstTreeView"/>
+
+                            </ToolbarTitledPane>
+                        </children>
+                    </AnchorPane>
+                </SplitPane>
             </items>
         </SplitPane>
     </center>
