@@ -9,8 +9,11 @@ import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.mapToMyT
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.reactfx.EventSource;
 import org.reactfx.EventStreams;
@@ -43,7 +46,8 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
     private final SuspendableEventStream<NodeSelectionEvent> suppressibleSelectionEvents;
     private final DesignerRoot designerRoot;
     private final Var<Boolean> highlightFocusParents = Var.newSimpleVar(true);
-    private final Var<Boolean> selectSubtree = Var.newSimpleVar(true);
+    private final Var<Function<Node, Collection<String>>> additionalStyleClasses =
+        Var.newSimpleVar(n -> Collections.emptySet());
 
 
     /** Only provided for scenebuilder, not used at runtime. */
@@ -83,6 +87,16 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
                 baseSelectionEvents.push(NodeSelectionEvent.of(n));
             }
         }));
+
+
+        EventStreams.valuesOf(additionalStyleClasses)
+                    .repeatOn(EventStreams.valuesOf(rootProperty()))
+                    .subscribe(fun -> {
+                        TreeItem<Node> rootNode = getRoot();
+                        if (rootNode != null && fun != null) {
+                            ((ASTTreeItem) rootNode).foreach(it -> it.setStyleClasses(fun.apply(it.getValue())));
+                        }
+                    });
 
     }
 
@@ -126,6 +140,22 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
         if (!isIndexVisible(selectionModel.getSelectedIndex())) {
             scrollTo(selectionModel.getSelectedIndex());
         }
+    }
+
+
+    public Function<Node, Collection<String>> getAdditionalStyleClasses() {
+        return additionalStyleClasses.getValue();
+    }
+
+    public Var<Function<Node, Collection<String>>> additionalStyleClassesProperty() {
+        return additionalStyleClasses;
+    }
+
+    public void setAdditionalStyleClasses(Function<Node, Collection<String>> mapper) {
+        if (mapper == null) {
+            mapper = n -> Collections.emptyList();
+        }
+        this.additionalStyleClasses.setValue(mapper);
     }
 
     public Var<Boolean> highlightFocusParentsProperty() {

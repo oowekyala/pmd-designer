@@ -17,6 +17,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSy
 
 import java.util.Iterator;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import net.sourceforge.pmd.lang.ast.Node;

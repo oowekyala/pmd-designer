@@ -17,6 +17,28 @@
 
 }
 
+.tree-view {
+  .tree-cell {
+
+    &.removed {
+      -fx-background-color: fade(red, 15);
+    }
+
+    &.proposed-removal {
+      -fx-background-color: fade(yellow, 15);
+    }
+
+
+    &:selected {
+      -fx-background-color: @darker-accent-border;
+
+      &:focused {
+        -fx-background-color: @selection-focus-color;
+      }
+    }
+  }
+}
+
 .tree-cell.ast-parent {
 
   @foreach-i: { -fx-background-color: linear-gradient(to right, fade(@selection-focus-color, percentage(1- (@i / 5))) 0%, darken(white, 5%) 10%); };

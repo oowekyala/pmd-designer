@@ -5,6 +5,7 @@
 package net.sourceforge.pmd.util.fxdesigner;
 
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.mapToggleGroupToUserData;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.defaultLanguageVersion;
@@ -16,11 +17,14 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.reactfx.EventStreams;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
@@ -45,6 +49,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.RadioMenuItem;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 
 
@@ -70,6 +75,8 @@ public class SourceEditorController extends AbstractController {
             return SourceEditorController.class.getClassLoader();
         }
     });
+    @FXML
+    private ToggleButton highlightRemovedOldNodesToggle;
     @FXML
     private Label numNewNodesLabel;
     @FXML
@@ -173,6 +180,43 @@ public class SourceEditorController extends AbstractController {
                       }
 
                   });
+
+        EventStreams.valuesOf(highlightRemovedOldNodesToggle.selectedProperty())
+                    .subscribe(on -> oldAstTreeView.setAdditionalStyleClasses(on ? SourceEditorController::additionalStyleClasses : null));
+
+    }
+
+    private static Collection<String> additionalStyleClasses(Node n) {
+        if (n == null) {
+            return emptySet();
+        }
+        switch (n.getXPathNodeName()) {
+        case "Literal":
+            if (n.jjtGetNumChildren() == 0) {
+                break;
+            }
+        case "Expression":
+        case "PrimaryExpression":
+        case "VariableInitializer":
+        case "Type":
+        case "ReferenceType":
+        case "PrimaryPrefix":
+        case "Arguments":
+        case "PrimarySuffix":
+        case "MemberSelector":
+            return Collections.singletonList("removed");
+        case "BlockStatement":
+        case "TypeArgument":
+        case "Statement":
+        case "Annotation":
+        case "ClassOrInterfaceBodyDeclaration":
+        case "AnnotationTypeBodyDeclaration":
+        case "TypeDeclaration":
+            return Collections.singletonList("proposed-removal");
+        default:
+        }
+        return emptySet();
+
     }
 
 
