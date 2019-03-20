@@ -17,7 +17,6 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.ForgetfulPersistenceMana
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
-import net.sourceforge.pmd.util.fxdesigner.app.services.OnDiskPersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
 
 import javafx.scene.input.KeyCode;

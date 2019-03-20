@@ -208,8 +208,8 @@ public final class PmdCoordinatesSystem {
                 return false;
             }
             TextRange textRange = (TextRange) o;
-            return startPos.equals(textRange.startPos) &&
-                endPos.equals(textRange.endPos);
+            return startPos.equals(textRange.startPos)
+                && endPos.equals(textRange.endPos);
         }
 
         @Override
