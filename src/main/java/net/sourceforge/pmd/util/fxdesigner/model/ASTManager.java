@@ -72,7 +72,7 @@ public class ASTManager implements ApplicationComponent {
 
 
     public Optional<Node> getCompilationUnit() {
-        return getGlobalState().globalCompilationUnitProperty().getOpt();
+        return compilationUnit.getOpt();
     }
 
 

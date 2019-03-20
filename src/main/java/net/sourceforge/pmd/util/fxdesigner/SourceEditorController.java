@@ -23,6 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.ClasspathClassLoader;
@@ -57,6 +58,7 @@ public class SourceEditorController extends AbstractController {
 
     private static final Duration AST_REFRESH_DELAY = Duration.ofMillis(100);
     private final ASTManager astManager;
+    private final ASTManager oldAstManager;
     private final Var<List<File>> auxclasspathFiles = Var.newSimpleVar(emptyList());
     private final Val<ClassLoader> auxclasspathClassLoader = auxclasspathFiles.map(fileList -> {
         try {
@@ -90,12 +92,21 @@ public class SourceEditorController extends AbstractController {
     public SourceEditorController(DesignerRoot designerRoot) {
         super(designerRoot);
         astManager = new ASTManager(designerRoot);
+        oldAstManager = new ASTManager(designerRoot);
     }
 
 
     @Override
     protected void beforeParentInit() {
         initializeLanguageSelector(); // languageVersionProperty() must be initialized
+
+        oldAstManager.languageVersionProperty().bind(
+            astManager.languageVersionProperty()
+                      .map(LanguageVersion::getTerseName)
+                      .map(it -> it.replace("java", "oldjava"))
+                      .map(LanguageRegistry::findLanguageVersionByTerseName)
+        );
+
 
         languageVersionProperty().values()
                                  .filterMap(Objects::nonNull, LanguageVersion::getLanguage)
@@ -205,6 +216,10 @@ public class SourceEditorController extends AbstractController {
             // this will push the new compilation unit on the global Val
             astManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
                       .ifPresent(this::setUpToDateCompilationUnit);
+
+            oldAstManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
+                         .ifPresent(n -> oldAstTreeView.setAstRoot(n));
+
         } catch (ParseAbortedException e) {
             editorTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
             getGlobalState().writableGlobalCompilationUnitProperty().setValue(null);

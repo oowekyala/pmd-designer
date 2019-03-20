@@ -22,6 +22,14 @@ public final class AstTraversalUtil {
 
     }
 
+
+    public static Node getRoot(Node n) {
+        return n == null ? null
+                         : n.jjtGetParent() == null
+                           ? n : getRoot(n.jjtGetParent());
+    }
+
+
     /**
      * TODO move to some util.
      *
@@ -50,7 +58,7 @@ public final class AstTraversalUtil {
             }
         }
 
-        return currentNewNode.getClass() == oldSelection.getClass()
+        return currentNewNode.getXPathNodeName().equals(oldSelection.getXPathNodeName())
                ? Optional.of(currentNewNode) : Optional.empty();
     }
 }

@@ -171,6 +171,18 @@ public final class PmdCoordinatesSystem {
             this.column = column;
         }
 
+        public TextPos2D shift(int lineShift, int columnShift) {
+            return new TextPos2D(line + lineShift, column + columnShift);
+        }
+
+        public TextPos2D clipLine(int lineMin, int lineMax) {
+            return new TextPos2D(Math.max(lineMin, Math.min(lineMax, line)), column);
+        }
+
+        public TextPos2D clipColumn(int columnMin, int columnMax) {
+            return new TextPos2D(line, Math.max(columnMin, Math.min(columnMax, column)));
+        }
+
 
         @Override
         public int hashCode() {

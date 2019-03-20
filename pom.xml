@@ -33,7 +33,7 @@
     </distributionManagement>
 
     <properties>
-        <pmd.core.version>6.12.0</pmd.core.version>
+        <pmd.core.version>7.0.0-SNAPSHOT</pmd.core.version>
         <openjfx.version>11</openjfx.version>
         <java.version>8</java.version>
 
@@ -599,6 +599,13 @@
                     <artifactId>pmd-core</artifactId>
                     <version>${pmd.core.version}</version>
                     <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-oldjava</artifactId>
+                    <version>6.13.0-SNAPSHOT</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
                 </dependency>
                 <dependency>
                     <groupId>net.sourceforge.pmd</groupId>

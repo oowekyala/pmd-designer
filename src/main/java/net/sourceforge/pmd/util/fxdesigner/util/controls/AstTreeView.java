@@ -9,9 +9,12 @@ import static net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.Select
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.findOldNodeInNewAst;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
+import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.endPosition;
+import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.findNodeAt;
 
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -22,6 +25,7 @@ import org.reactfx.SuspendableEventStream;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil;
 
 import javafx.beans.NamedArg;
 import javafx.scene.control.SelectionModel;
@@ -108,6 +112,29 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
     @Override
     public void setFocusNode(Node node, Set<SelectionOption> options) {
         SelectionModel<TreeItem<Node>> selectionModel = getSelectionModel();
+
+        if (getRoot() == null) {
+            return;
+        }
+
+        if (getRoot().getValue() != AstTraversalUtil.getRoot(node)) {
+            // it's another tree
+
+            // first try to find a matching path
+            Optional<Node> fromTreePath = findOldNodeInNewAst(node, getRoot().getValue());
+
+            if (fromTreePath.isPresent()) {
+                node = fromTreePath.get();
+            } else {
+                // otherwise resort to text coordinate matching
+                Optional<Node> fromCoordinates = findNodeAt(getRoot().getValue(),
+                                                            endPosition(node));
+
+                if (fromCoordinates.isPresent()) {
+                    node = fromCoordinates.get();
+                }
+            }
+        }
 
 
         ASTTreeItem found = ((ASTTreeItem) getRoot()).findItem(node);
