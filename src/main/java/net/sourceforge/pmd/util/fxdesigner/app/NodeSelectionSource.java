@@ -4,128 +4,91 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app;
 
-import java.util.Objects;
+import static java.util.Collections.emptySet;
+
+import java.util.Set;
 
 import org.reactfx.EventStream;
+import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.util.fxdesigner.MainDesignerController;
 import net.sourceforge.pmd.util.fxdesigner.XPathRuleEditorController;
-import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
-
-import javafx.application.Platform;
+import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 
 /**
  * A control or controller that somehow displays nodes in a form that the user can select.
  * When a node is selected by the user (e.g. {@link AstTreeView}, {@link XPathRuleEditorController}, etc),
  * the whole UI is synchronized to reflect information about the node. This includes scrolling
- * the TreeView, the editor, etc. To achieve that uniformly, node selection events are merged
- * into a global stream for the whole app. Events from that stream are handled by {@link MainDesignerController}.
- *
- * <p>Node selection sources form a tree parallel to {@link AbstractController} and {@link SettingsOwner}.
- * This interface implements behaviour for leaves of the tree. Inner nodes are handled by
- * {@link CompositeSelectionSource}.
+ * the TreeView, the editor, etc. To achieve that uniformly, node selection events are forwarded
+ * as messages on a {@link MessageChannel}.
  *
  * @author Clément Fournier
  */
 public interface NodeSelectionSource extends ApplicationComponent {
 
-    /**
-     * Returns a stream of events that should push an event each time
-     * this source or one of its sub components records a change in node
-     * selection. This one needs to be implemented in sub classes.
-     *
-     * <p>You can't trust that this method will return the same stream
-     * when called several times. In fact it's just called one time.
-     * That's why you can't abstract the suppressible behaviour here.
-     * You'd need Scala traits.
-     */
-    EventStream<NodeSelectionEvent> getSelectionEvents();
-
-
-    /**
-     * Bubbles a selection event down the tree. First, {@link #setFocusNode(Node)} is called to
-     * handle the event (if the event didn't originate from here). If this is not a leaf of the tree,
-     * then the event is forwarded to the children nodes as well.
-     *
-     * @param selectionEvent Event to handle
-     */
-    default void bubbleDown(NodeSelectionEvent selectionEvent) {
-        if (alwaysHandleSelection() || selectionEvent.getOrigin() != this) {
-            logSelectionEventTrace(selectionEvent, () -> "\t" + this.getDebugName() + " is handling event");
-            // roam the tree synchronously, execute handlers some time later
-            Platform.runLater(() -> setFocusNode(selectionEvent.getSelection()));
-        }
-    }
-
 
     /**
      * Updates the UI to react to a change in focus node. This is called whenever some selection source
-     * in the tree records a change. The event is not forwarded to its origin unless {@link #alwaysHandleSelection()}
-     * is overridden to return true.
+     * in the tree records a change.
      */
-    void setFocusNode(Node node);
-
-
-    /** Whether to also handle events which originated from this controller. */
-    default boolean alwaysHandleSelection() {
-        return false;
-    }
+    void setFocusNode(Node node, Set<SelectionOption> options);
 
 
     /**
-     * An event fired when the user selects a node somewhere in the UI
-     * and bubbled up to the {@link MainDesignerController}. It's a pure
-     * data class.
+     * Initialises this component. Must be called by the component somewhere.
+     *
+     * @param root                  Instance of the app. Should be the same as {@link #getDesignerRoot()},
+     *                              but the parameter here is to make it clear that {@link #getDesignerRoot()}
+     *                              must be initialized before this method is called.
+     * @param mySelectionEvents     Stream of nodes that should push an event each time the user selects a node
+     *                              from this control. The whole app will sync to this new selection.
+     * @param alwaysHandleSelection Whether the component should handle selection events that originated from itself.
      */
-    final class NodeSelectionEvent {
+    default Val<Node> initNodeSelectionHandling(DesignerRoot root,
+                                                EventStream<? extends NodeSelectionEvent> mySelectionEvents,
+                                                boolean alwaysHandleSelection) {
+        MessageChannel<NodeSelectionEvent> channel = root.getService(DesignerRoot.NODE_SELECTION_CHANNEL);
+        mySelectionEvents.subscribe(n -> channel.pushEvent(this, n));
+        EventStream<NodeSelectionEvent> selection = channel.messageStream(alwaysHandleSelection, this);
+        selection.subscribe(evt -> setFocusNode(evt.selected, evt.options));
+        return ReactfxUtil.latestValue(selection.map(it -> it.selected));
+    }
 
-        private final Node selection;
-        private final NodeSelectionSource origin;
 
+    enum SelectionOption {
+        /**
+         * This selection is the reselection of a node across a parsing.
+         * Stuff like scrolling or external style changes should be avoided,
+         * only the internal model should be affected.
+         */
+        SELECTION_RECOVERY
+    }
 
-        public NodeSelectionEvent(Node selection, NodeSelectionSource origin) {
-            this.selection = selection;
-            this.origin = origin;
+    class NodeSelectionEvent {
+
+        // RRR data class
+
+        public final Node selected;
+        public final Set<SelectionOption> options;
+
+        private NodeSelectionEvent(Node selected, Set<SelectionOption> options) {
+            this.selected = selected;
+            this.options = options;
         }
-
-
-        public Node getSelection() {
-            return selection;
-        }
-
-
-        public NodeSelectionSource getOrigin() {
-            return origin;
-        }
-
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-            NodeSelectionEvent that = (NodeSelectionEvent) o;
-            return Objects.equals(selection, that.selection)
-                && Objects.equals(origin, that.origin);
-        }
-
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(selection, origin);
-        }
-
 
         @Override
         public String toString() {
-            return getSelection().getXPathNodeName() + "(" + hashCode() + ") from " + getOrigin().getClass().getSimpleName();
+            return getClass().getName() + "(node=" + selected + ", options=" + options + ")";
+        }
+
+        public static NodeSelectionEvent of(Node selected) {
+            return new NodeSelectionEvent(selected, emptySet());
+        }
+
+        public static NodeSelectionEvent of(Node selected, Set<SelectionOption> options) {
+            return new NodeSelectionEvent(selected, options);
         }
     }
-
 }

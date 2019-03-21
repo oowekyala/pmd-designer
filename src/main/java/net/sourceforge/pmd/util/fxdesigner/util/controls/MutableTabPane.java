@@ -46,7 +46,7 @@ import javafx.scene.layout.Region;
  *
  * @author Clément Fournier
  */
-public final class MutableTabPane<T extends AbstractController<?> & TitleOwner> extends AnchorPane {
+public final class MutableTabPane<T extends AbstractController & TitleOwner> extends AnchorPane {
 
     /** The TabPane hosting the tabs. */
     private final TabPane tabPane = new TabPane();

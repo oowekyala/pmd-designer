@@ -18,7 +18,7 @@ import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.app.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 
 
 /**
@@ -43,6 +43,7 @@ public class ASTManager implements ApplicationComponent {
      * Most up-to-date compilation unit. Is null if the current source cannot be parsed.
      */
     private final Var<Node> compilationUnit = Var.newSimpleVar(null);
+
     /**
      * Selected language version.
      */
@@ -70,7 +71,7 @@ public class ASTManager implements ApplicationComponent {
 
 
     public Optional<Node> getCompilationUnit() {
-        return compilationUnit.getOpt();
+        return getGlobalState().globalCompilationUnitProperty().getOpt();
     }
 
 

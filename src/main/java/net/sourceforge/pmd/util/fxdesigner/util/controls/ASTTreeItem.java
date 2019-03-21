@@ -4,14 +4,13 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
-import static net.sourceforge.pmd.internal.util.IteratorUtil.reverse;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.parentIterator;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.reverse;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
 import org.reactfx.value.Var;
 
@@ -78,7 +77,9 @@ public final class ASTTreeItem extends TreeItem<Node> {
         // depth-first traversal over all the tree (was at worst O(size of the tree),
         // now it's at worst O(number of parents of the searched node))
 
-        Objects.requireNonNull(node, "Cannot find a null item");
+        if (node == null) {
+            return null;
+        }
 
         Iterator<Node> pathToNode = reverse(parentIterator(node, true));
 
@@ -106,11 +107,11 @@ public final class ASTTreeItem extends TreeItem<Node> {
 
 
     /** Builds an ASTTreeItem recursively from a node. */
-    public static ASTTreeItem getRoot(Node n) {
+    static ASTTreeItem buildRoot(Node n) {
         ASTTreeItem item = new ASTTreeItem(n);
         if (n.jjtGetNumChildren() > 0) {
             for (int i = 0; i < n.jjtGetNumChildren(); i++) {
-                item.getChildren().add(getRoot(n.jjtGetChild(i)));
+                item.getChildren().add(buildRoot(n.jjtGetChild(i)));
             }
         }
         return item;

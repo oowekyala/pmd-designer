@@ -1,22 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <groupId>net.sourceforge.pmd</groupId>
     <artifactId>pmd-ui</artifactId>
-    <name>PMD UI Applications</name>
+    <name>PMD Designer</name>
+    <version>6.13.0-SNAPSHOT</version>
 
-    <parent>
-        <groupId>net.sourceforge.pmd</groupId>
-        <artifactId>pmd</artifactId>
-        <version>6.12.0-SNAPSHOT</version>
-    </parent>
+    <inceptionYear>2017</inceptionYear>
+    <licenses>
+        <license>
+            <name>BSD-2-Clause</name>
+            <url>http://pmd.sourceforge.net/license.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:git://github.com/pmd/pmd-designer.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/pmd/pmd-designer.git</developerConnection>
+        <url>https://github.com/pmd/pmd-designer</url>
+        <tag>HEAD</tag>
+    </scm>
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
-        <java.version>8</java.version>
-        <!-- Workaround for https://youtrack.jetbrains.com/issue/IDEA-188690 -->
-        <maven.compiler.source>1.${java.version}</maven.compiler.source>
-        <maven.compiler.target>1.${java.version}</maven.compiler.target>
-
+        <pmd.core.version>6.12.0</pmd.core.version>
         <openjfx.version>11</openjfx.version>
+        <java.version>8</java.version>
+
+        <local.lib.repo>${project.basedir}/lib/mvn-repo</local.lib.repo>
+
+        <checkstyle.version>3.0.0</checkstyle.version>
+        <pmd.plugin.version>3.11.0</pmd.plugin.version>
+        <javadoc.plugin.version>3.0.1</javadoc.plugin.version>
+        <source.plugin.version>3.0.1</source.plugin.version>
+        <jar.plugin.version>3.1.0</jar.plugin.version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <pmd.build-tools.version>1.4.0</pmd.build-tools.version>
+        <pmd.check.version>6.12.0</pmd.check.version>
     </properties>
 
     <build>
@@ -31,9 +64,23 @@
         </resources>
 
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.7.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.0.0</version>
+            </plugin>
+
             <!-- Compiles Less files into CSS files. Currently compatible with Less 1.7.0 -->
-            <!-- If need be, we can probably update the Less version by using the lessJs
-                 configuration property and having a custom less.js file around. -->
             <!-- See https://github.com/marceloverdijk/lesscss-maven-plugin -->
             <plugin>
                 <groupId>org.lesscss</groupId>
@@ -54,23 +101,226 @@
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-pmd-plugin</artifactId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>${checkstyle.version}</version>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>8.12</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-build-tools-config</artifactId>
+                        <version>${pmd.build-tools.version}</version>
+                    </dependency>
+                </dependencies>
                 <configuration>
+                    <configLocation>/net/sourceforge/pmd/pmd-checkstyle-config.xml</configLocation>
+                    <suppressionsLocation>/net/sourceforge/pmd/pmd-checkstyle-suppressions.xml</suppressionsLocation>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <sourceDirectories>
+                        <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+                    </sourceDirectories>
+                    <resourceIncludes>**/*.properties,**/*.less</resourceIncludes>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>${pmd.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                            <goal>cpd</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <linkXRef>true</linkXRef>
+                    <minimumTokens>100</minimumTokens>
+                    <targetJdk>1.${java.version}</targetJdk>
                     <rulesets>
-                        <ruleset>/net/sourceforge/pmd/pmd-ui-dogfood-config.xml</ruleset>
+                        <ruleset>config/pmd-check.xml</ruleset>
                     </rulesets>
+                    <skipPmdError>false</skipPmdError>
+                    <failurePriority>2</failurePriority>
+                    <failOnViolation>true</failOnViolation>
+                    <printFailingErrors>true</printFailingErrors>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-core</artifactId>
+                        <version>${pmd.check.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-xml</artifactId>
+                        <version>${pmd.check.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-java</artifactId>
+                        <version>${pmd.check.version}</version>
+                    </dependency>
+                    <!-- This contains the main dogfood ruleset -->
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-build-tools-config</artifactId>
+                        <version>${pmd.build-tools.version}</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <!-- We need to tag the jar as multi-release since we shade-in the controlsfx -->
+            <!-- multi-release jar -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${jar.plugin.version}</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <!-- Important for it to work on JRE 9+ -->
+                            <Multi-Release>true</Multi-Release>
+                            <!-- This can't work as we don't include any pmd dependencies -->
+                            <!--<Main-Class>net.sourceforge.pmd.util.fxdesigner.DesignerStarter</Main-Class>-->
+                        </manifestEntries>
+                    </archive>
+                    <finalName>pmd-ui-${project.version}</finalName>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.1</version>
+                <configuration>
+
+                    <!-- We can't just use an artifactSet/excludes to exclude pmd dependencies -->
+                    <!-- because it would include their transitive dependencies -->
+
+                    <relocations>
+                        <!-- Relocate apache dependencies because they're included in the binary dist-->
+                        <relocation>
+                            <pattern>org.apache.commons</pattern>
+                            <shadedPattern>org.shaded.apache.commons</shadedPattern>
+                        </relocation>
+                    </relocations>
+
+                    <!-- Merge resource provider files like Ikonli icon resolvers -->
+                    <transformers>
+                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                    </transformers>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${javadoc.plugin.version}</version>
+                <configuration>
+                    <quiet>true</quiet>
+                    <doclint>none</doclint>
+                    <additionalJOptions>
+                        <additionalJOption>-html5</additionalJOption>
+                    </additionalJOptions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <phase>package</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${source.plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.sonatype.plugins</groupId>
+                <artifactId>nexus-staging-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <serverId>ossrh</serverId>
+                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                    <!-- if autoReleaseAfterClose is true, then the artifacts will be
+                         automatically promoted to maven central -->
+                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <releaseProfiles>release</releaseProfiles>
+                    <pushChanges>true</pushChanges>
+                    <localCheckout>true</localCheckout>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <tagNameFormat>@{project.version}</tagNameFormat>
+                    <goals>deploy</goals>
                 </configuration>
             </plugin>
         </plugins>
     </build>
 
+    <repositories>
+        <repository>
+            <id>local-libs</id>
+            <url>file://${local.lib.repo}</url>
+        </repository>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <dependencies>
-        <dependency>
-            <groupId>net.sourceforge.pmd</groupId>
-            <artifactId>pmd-core</artifactId>
-        </dependency>
-
         <!-- OpenJFX dependencies are provided. OpenJFX needs to be installed separately. -->
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -109,15 +359,51 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Other libraries -->
+
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
             <artifactId>richtextfx</artifactId>
             <version>0.9.2</version>
         </dependency>
+
+        <!-- We need two incompatible versions of controlsfx, one for Java 8, and one for Java 9+ -->
+        <!-- Ideally ControlsFX would release a MR jar but that doesn't seem to be in their priorities: -->
+        <!-- https://github.com/controlsfx/controlsfx/issues/1014 -->
+        <!-- So we need to build it ourselves. But IntelliJ's maven integration doesn't support -->
+        <!-- that very well. -->
+        <!-- The simplest way I found to have it work both in the IDE and in the shaded jar -->
+        <!-- is to build and deploy locally a multi-release jar. -->
+        <!-- Previously the maven build created that Jar, but the IDE was confused and couldn't run the project -->
+        <!-- on JRE 9. -->
+
+        <!-- Using a parent pom and a submodule for the cfx jar doesn't work in IntelliJ and -->
+        <!-- would force us to release to maven central, so to respect all their restrictions. -->
+
+        <!-- Unless controlsfx releases its own MR jar, we have to rebuilt that local jar each time we -->
+        <!-- want an update (there's a pom provided in the lib dir for that). -->
+
         <dependency>
-            <groupId>org.controlsfx</groupId>
-            <artifactId>controlsfx</artifactId>
-            <version>8.40.13</version>
+            <groupId>org.controlsfx.custom</groupId>
+            <artifactId>controlsfx-mr-jar</artifactId>
+            <version>1.0</version>
+        </dependency>
+
+        <!-- Those are shaded to avoid duplication -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.8.1</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-logging</groupId>
+            <artifactId>commons-logging</artifactId>
+            <version>1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
         </dependency>
         <dependency>
             <groupId>commons-beanutils</groupId>
@@ -134,15 +420,23 @@
         <dependency>
             <groupId>org.kordamp.ikonli</groupId>
             <artifactId>ikonli-javafx</artifactId>
-            <version>2.3.0</version>
+            <version>2.4.0</version>
         </dependency>
         <dependency>
             <groupId>org.kordamp.ikonli</groupId>
             <artifactId>ikonli-fontawesome5-pack</artifactId>
-            <version>2.3.0</version>
+            <version>2.4.0</version>
         </dependency>
 
         <!-- PMD dependencies -->
+        <!-- All those are "provided" to exclude them from the shaded jar -->
+        <!-- When importing project in an IDE, the profiles updates their scope to compile/runtime -->
+        <dependency>
+            <groupId>net.sourceforge.pmd</groupId>
+            <artifactId>pmd-core</artifactId>
+            <version>${pmd.core.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.bitbucket.cowwoc.diff-match-patch</groupId>
             <artifactId>diff-match-patch</artifactId>
@@ -152,63 +446,243 @@
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-apex</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-java</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-javascript</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-jsp</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-plsql</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-visualforce</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-vm</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.pmd</groupId>
             <artifactId>pmd-xml</artifactId>
-            <version>${project.version}</version>
+            <version>${pmd.core.version}</version>
             <optional>true</optional>
-            <scope>runtime</scope>
+            <scope>provided</scope>
         </dependency>
+
+        <!-- TEST DEPENDENCIES -->
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- Those profiles are activated when importing project in eclipse or IntelliJ-->
+    <!-- They're only there to shift the "provided" scope to "runtime", to avoid recording -->
+    <!-- accidental compile dependencies. -->
+    <!-- They're duplicated, because Maven doesn't support doing a logical OR in activation... -->
+    <!-- See https://issues.apache.org/jira/browse/MNG-3328 -->
+    <profiles>
+        <profile>
+            <id>m2e</id>
+            <!-- This profile is only activated when building in Eclipse with m2e -->
+            <activation>
+                <property>
+                    <name>m2e.version</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-core</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-apex</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-java</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-javascript</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-jsp</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-plsql</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-visualforce</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-vm</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-xml</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>idea</id>
+            <!-- This profile is only activated when building in IntelliJ -->
+            <activation>
+                <property>
+                    <name>idea.maven.embedder.version</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-core</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-apex</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-java</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-javascript</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-jsp</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-plsql</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-visualforce</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-vm</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+                <dependency>
+                    <groupId>net.sourceforge.pmd</groupId>
+                    <artifactId>pmd-xml</artifactId>
+                    <version>${pmd.core.version}</version>
+                    <optional>true</optional>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>release</id>
+            <build>
+              <plugins>
+                <plugin>
+                  <groupId>org.apache.maven.plugins</groupId>
+                  <artifactId>maven-gpg-plugin</artifactId>
+                  <version>1.6</version>
+                  <executions>
+                    <execution>
+                      <id>sign-artifacts</id>
+                      <phase>verify</phase>
+                      <goals>
+                        <goal>sign</goal>
+                      </goals>
+                    </execution>
+                  </executions>
+                </plugin>
+              </plugins>
+            </build>
+        </profile>
+    </profiles>
+
 </project>

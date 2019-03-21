@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
 
+import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 
 import javafx.application.Platform;
@@ -23,13 +24,15 @@ import javafx.fxml.Initializable;
  * tree (the JavaFX scene graph), it's natural to link the controllers in a
  * tree too.
  *
- * <p>For now controllers mostly communicate by sending messages to their parent
- * and letting it forward the message to the rest of the app. TODO I'm more and more
- * convinced we should avoid that and stop having the controllers hold a reference
- * to their parent. They should only communicate by exposing properties their parent
- * binds to, but they shouldn't know about their parent.
+ * <p>Controllers communicate with the rest of the app through several mechanisms:
+ * <ul>
+ *     <li>Property binding: the child exposes some property, the parent links it
+ *     to another child or exposes it again</li>
+ *     <li>{@link MessageChannel}s</li>
+ *     <li>{@link AppServiceDescriptor}s</li>
+ * </ul>
  *
- * <p>This class mainly to make the initialization cycle of JavaFX clearer. Children controllers
+ * <p>This class mainly exists to make the initialization cycle of JavaFX clearer. Children controllers
  * are initialized before their parent, but sometimes they should only
  * perform some actions after its parent has been initialized, e.g. binding
  * properties that depend on a restored setting or stuff. This is part
@@ -39,26 +42,16 @@ import javafx.fxml.Initializable;
  * <p>This only works if all controllers in the initialization sequence of an
  * FXML file extend this class.
  *
- *
- * @param <T> Type of the parent controller
- *
  * @author Clément Fournier
- * @since 7.0.0
+ * @since 6.11.0
  */
-public abstract class AbstractController<T extends AbstractController<?>> implements Initializable, SettingsOwner, ApplicationComponent {
+public abstract class AbstractController implements Initializable, SettingsOwner, ApplicationComponent {
 
-    protected final T parent;
     private final DesignerRoot designerRoot;
 
 
-    protected AbstractController(DesignerRoot root, T parent) {
-        this.parent = parent;
+    protected AbstractController(DesignerRoot root) {
         this.designerRoot = root;
-    }
-
-
-    protected AbstractController(T parent) {
-        this(parent.getDesignerRoot(), parent);
     }
 
 
@@ -71,7 +64,7 @@ public abstract class AbstractController<T extends AbstractController<?>> implem
     @Override
     public final void initialize(URL url, ResourceBundle resourceBundle) {
         beforeParentInit();
-        for (AbstractController<?> child : getChildren()) {
+        for (AbstractController child : getChildren()) {
             child.afterParentInit();
         }
         afterChildrenInit();
@@ -125,7 +118,7 @@ public abstract class AbstractController<T extends AbstractController<?>> implem
     }
 
 
-    protected List<? extends AbstractController<?>> getChildren() {
+    protected List<? extends AbstractController> getChildren() {
         return Collections.emptyList();
     }
 }

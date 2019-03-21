@@ -4,15 +4,16 @@
 
 
 <?import org.kordamp.ikonli.javafx.FontIcon?>
-<?import net.sourceforge.pmd.util.fxdesigner.util.codearea.HighlightLayerCodeArea?>
 <?import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView?>
+<?import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeEditionCodeArea?>
 <?import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
-<BorderPane xmlns="http://javafx.com/javafx/8.0.172-ea"
+<?import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeParentageCrumbBar?>
+<BorderPane xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="net.sourceforge.pmd.util.fxdesigner.SourceEditorController">
     <center>
@@ -45,15 +46,13 @@
                                 </MenuButton>
                             </toolbarItems>
                             <content>
-                                <HighlightLayerCodeArea fx:id="codeEditorArea"
-                                                        idEnum="net.sourceforge.pmd.util.fxdesigner.SourceEditorController$StyleLayerIds"
-                                                        stylesheets="@../css/editor-theme.css"
-                                                        BorderPane.alignment="CENTER">
+                                <NodeEditionCodeArea fx:id="nodeEditionCodeArea"
+                                                     stylesheets="@../css/editor-theme.css"
+                                                     BorderPane.alignment="CENTER">
                                     <BorderPane.margin>
                                         <Insets />
                                     </BorderPane.margin>
-                                </HighlightLayerCodeArea>
-                                <!--<TextArea />-->
+                                </NodeEditionCodeArea>
                             </content>
                         </ToolbarTitledPane>
                     </children>
@@ -79,8 +78,8 @@
         </SplitPane>
     </center>
     <bottom>
-        <!--<NodeParentageCrumbBar fx:id="focusNodeParentageCrumbBar"-->
-                               <!--stylesheets="@../css/crumbbar.css"-->
-                               <!--prefHeight="30" id="main-toolbar" />-->
+        <NodeParentageCrumbBar fx:id="focusNodeParentageCrumbBar"
+                               stylesheets="@../css/crumbbar.css"
+                               prefHeight="30" id="main-toolbar" />
     </bottom>
 </BorderPane>

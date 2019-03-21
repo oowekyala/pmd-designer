@@ -4,17 +4,16 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
 
-import net.sourceforge.pmd.lang.Language;
-import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
-import net.sourceforge.pmd.util.fxdesigner.app.CompositeSelectionSource;
-import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
-import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.MutableTabPane;
@@ -33,7 +32,7 @@ import javafx.fxml.FXML;
  *
  * @author Clément Fournier
  */
-public class RuleEditorsController extends AbstractController<MainDesignerController> implements CompositeSelectionSource {
+public class RuleEditorsController extends AbstractController {
 
     private final ObservableSet<XPathRuleEditorController> currentlySelectedController = FXCollections.observableSet();
     @FXML
@@ -43,7 +42,7 @@ public class RuleEditorsController extends AbstractController<MainDesignerContro
     private int restoredTabIndex = 0;
 
 
-    public RuleEditorsController(MainDesignerController parent) {
+    public RuleEditorsController(DesignerRoot parent) {
         super(parent);
     }
 
@@ -51,27 +50,17 @@ public class RuleEditorsController extends AbstractController<MainDesignerContro
     @Override
     protected void beforeParentInit() {
 
-        xpathEditorsTabPane.setControllerSupplier(() -> new XPathRuleEditorController(this));
+        xpathEditorsTabPane.setControllerSupplier(() -> new XPathRuleEditorController(getDesignerRoot()));
 
         selectedEditorProperty().changes()
                                 .subscribe(ch -> {
                                     // only the results of the currently opened tab are displayed
-                                    parent.resetXPathResults();
                                     currentlySelectedController.clear();
                                     if (ch.getNewValue() != null) {
                                         currentlySelectedController.add(ch.getNewValue());
-                                        refreshCurrentEditor(ch.getNewValue());
                                     }
                                 });
 
-        Val<ObservableList<Node>> currentXPathResults = selectedEditorProperty().flatMap(XPathRuleEditorController::xpathResultsProperty);
-
-        currentXPathResults.changes()
-                           .subscribe(ch -> {
-                               if (ch.getNewValue() != null) {
-                                   parent.highlightXPathResults(ch.getNewValue());
-                               }
-                           });
     }
 
 
@@ -86,7 +75,7 @@ public class RuleEditorsController extends AbstractController<MainDesignerContro
                 xpathEditorsTabPane.addTabWithNewController();
             } else {
                 for (ObservableXPathRuleBuilder builder : ruleSpecs) {
-                    xpathEditorsTabPane.addTabWithController(new XPathRuleEditorController(this, builder));
+                    xpathEditorsTabPane.addTabWithController(new XPathRuleEditorController(getDesignerRoot(), builder));
                 }
             }
 
@@ -98,56 +87,14 @@ public class RuleEditorsController extends AbstractController<MainDesignerContro
 
     }
 
-
-    TextAwareNodeWrapper wrapNode(Node node) {
-        return parent.wrapNode(node);
-    }
-
-
-    /**
-     * Called by the main controller to refresh the currently open editor.
-     */
-    public void refreshRuleResults() {
-        selectedEditorProperty().ifPresent(this::refreshCurrentEditor);
-    }
-
-
-    /**
-     * Called by the children rule editors with themselves as parameter.
-     */
-    void refreshCurrentEditor(XPathRuleEditorController editor) {
-
-        if (editor.equals(selectedEditorProperty().getValue())) {
-            parent.getCompilationUnit().ifPresent(r -> editor.refreshResults(r, parent.getLanguageVersion()));
-        }
-    }
-
-
-    /**
-     * Language version of the editor, used for synced XPath editors.
-     */
-    public Val<LanguageVersion> globalLanguageVersionProperty() {
-        return parent.languageVersionProperty();
-    }
-
-
-    public Val<Language> globalLanguageProperty() {
-        return Val.map(globalLanguageVersionProperty(), LanguageVersion::getLanguage);
-    }
-
-
     private Val<XPathRuleEditorController> selectedEditorProperty() {
         return xpathEditorsTabPane.currentFocusedController();
     }
 
-
-    /**
-     * Called by the main editor when the compilation unit is marked invalid.
-     */
-    public void invalidateResults(boolean error) {
-        selectedEditorProperty().ifPresent(c -> c.invalidateResults(error));
+    public Val<List<Node>> currentRuleResults() {
+        return selectedEditorProperty().flatMap(XPathRuleEditorController::currentResultsProperty)
+                                       .orElseConst(Collections.emptyList());
     }
-
     /*
      *  Persisted properties
      */
@@ -172,8 +119,4 @@ public class RuleEditorsController extends AbstractController<MainDesignerContro
     }
 
 
-    @Override
-    public ObservableSet<? extends NodeSelectionSource> getSubSelectionSources() {
-        return currentlySelectedController;
-    }
 }

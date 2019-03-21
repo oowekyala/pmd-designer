@@ -6,9 +6,14 @@ package net.sourceforge.pmd.util.fxdesigner.app;
 
 import java.util.function.Supplier;
 
+import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
-import net.sourceforge.pmd.util.fxdesigner.app.LogEntry.Category;
-import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.NodeSelectionEvent;
+import net.sourceforge.pmd.util.fxdesigner.app.MessageChannel.Message;
+import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
+import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
+import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 
@@ -24,8 +29,7 @@ import javafx.stage.Stage;
  * root at initialization time, eg what {@link SourceEditorController} does with {@link AstTreeView}.
  *
  * <p>Some more specific cross-cutting structures for the internals of the app are the {@link SettingsOwner}
- * tree, which is more or less identical to the {@link AbstractController} tree. {@link NodeSelectionSource}s
- * form yet another similar tree of related components.
+ * tree, which is more or less identical to the {@link AbstractController} tree.
  *
  * @author Clément Fournier
  */
@@ -35,12 +39,18 @@ public interface ApplicationComponent {
     DesignerRoot getDesignerRoot();
 
 
-    /**
-     * A debug name for this component, used in developer mode to e.g. trace events
-     * handling paths.
-     */
-    default String getDebugName() {
-        return getClass().getSimpleName();
+    default <T> T getService(AppServiceDescriptor<T> descriptor) {
+        return getDesignerRoot().getService(descriptor);
+    }
+
+
+    default GlobalStateHolder getGlobalState() {
+        return getService(DesignerRoot.APP_STATE_HOLDER);
+    }
+
+
+    default LanguageVersion getGlobalLanguageVersion() {
+        return getGlobalState().getGlobalLanguageVersion();
     }
 
 
@@ -51,7 +61,16 @@ public interface ApplicationComponent {
      * @return The logger
      */
     default EventLogger getLogger() {
-        return getDesignerRoot().getLogger();
+        return getService(DesignerRoot.LOGGER);
+    }
+
+
+    /**
+     * A debug name for this component, used in developer mode to e.g. trace events
+     * handling paths.
+     */
+    default String getDebugName() {
+        return getClass().getSimpleName();
     }
 
 
@@ -120,11 +139,12 @@ public interface ApplicationComponent {
     }
 
 
-    /** Logs a tracing event pushed by a {@link NodeSelectionSource}. */
-    default void logSelectionEventTrace(NodeSelectionEvent event, Supplier<String> details) {
+    /** Traces a message. */
+    default <T> void logMessageTrace(Message<T> event, Supplier<String> details) {
         if (isDeveloperMode()) {
-            getLogger().logEvent(LogEntry.createNodeSelectionEventTraceEntry(event, details.get()));
+            getLogger().logEvent(LogEntry.createDataEntry(event, event.getCategory(), details.get()));
         }
     }
+
 
 }

@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import static net.sourceforge.pmd.util.fxdesigner.popups.SimplePopups.showLicensePopup;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,58 +14,42 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Stack;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
-import org.reactfx.value.Val;
+import org.reactfx.Subscription;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
-import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
-import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
-import net.sourceforge.pmd.util.fxdesigner.app.CompositeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
-import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
-import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LimitedSizeStack;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
-import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
-import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableSet;
+import javafx.beans.NamedArg;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.CustomMenuItem;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tab;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
 
 
 /**
  * Main controller of the app. Mediator for subdivisions of the UI.
- * Direct children are the {@link NodeInfoPanelController}, {@link RuleEditorsController}
  *
  * @author Clément Fournier
  * @since 6.0.0
  */
 @SuppressWarnings("PMD.UnusedPrivateField")
-public class MainDesignerController extends AbstractController<AbstractController<?>> implements CompositeSelectionSource {
+public class MainDesignerController extends AbstractController {
 
 
     /* Menu bar */
@@ -79,21 +65,27 @@ public class MainDesignerController extends AbstractController<AbstractControlle
     private Menu openRecentMenu;
     @FXML
     private Menu fileMenu;
-    /* Center toolbar */
-    @FXML
-    private ToggleButton bottomTabsToggle;
     /* Bottom panel */
     @FXML
     private SplitPane mainHorizontalSplitPane;
+    @FXML
+    private Tab metricResultsTab;
 
 
     /* Children */
     @FXML
-    private NodeInfoPanelController nodeInfoPanelController;
-    @FXML
     private RuleEditorsController ruleEditorsController;
     @FXML
     private SourceEditorController sourceEditorController;
+
+    @FXML
+    private NodeDetailPaneController nodeDetailsTabController;
+    @FXML
+    private MetricPaneController metricPaneController;
+    @FXML
+    private ScopesPanelController scopesPanelController;
+
+
     // we cache it but if it's not used the FXML is not created, etc
     private final SoftReferenceCache<EventLogController> eventLogController;
 
@@ -101,22 +93,16 @@ public class MainDesignerController extends AbstractController<AbstractControlle
     private final Stack<File> recentFiles = new LimitedSizeStack<>(5);
 
 
-    public MainDesignerController(DesignerRoot owner) {
-        super(owner, null);
-        eventLogController = new SoftReferenceCache<>(() -> new EventLogController(this));
+    public MainDesignerController(@NamedArg("designerRoot") DesignerRoot designerRoot) {
+        super(designerRoot);
+        eventLogController = new SoftReferenceCache<>(() -> new EventLogController(designerRoot));
     }
 
 
 
     @Override
     protected void beforeParentInit() {
-        try {
-            SettingsPersistenceUtil.restoreProperties(this, DesignerUtil.getSettingsFile());
-        } catch (Exception e) {
-            // shouldn't prevent the app from opening
-            // in case the file is corrupted, it will be overwritten on shutdown
-            e.printStackTrace();
-        }
+        getDesignerRoot().getService(DesignerRoot.PERSISTENCE_MANAGER).restoreSettings(this);
 
         licenseMenuItem.setOnAction(e -> showLicensePopup());
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
@@ -126,9 +112,13 @@ public class MainDesignerController extends AbstractController<AbstractControlle
 
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup());
 
-        openEventLogMenuItem.setOnAction(e -> eventLogController.get().showPopup());
+        openEventLogMenuItem.setOnAction(e -> {
+            EventLogController wizard = eventLogController.get();
+            Subscription parentToWizSubscription = wizard.errorNodesProperty().values().subscribe(sourceEditorController.currentErrorNodesProperty()::setValue);
+            wizard.showPopup(parentToWizSubscription);
+        });
         openEventLogMenuItem.textProperty().bind(
-            getLogger().numNewLogEntriesProperty().map(i -> "Event log (" + (i > 0 ? i : "no") + " new)")
+            getLogger().numNewLogEntriesProperty().map(i -> "Event _Log (" + (i > 0 ? i : "no") + " new)")
         );
 
     }
@@ -137,123 +127,22 @@ public class MainDesignerController extends AbstractController<AbstractControlle
     @Override
     protected void afterChildrenInit() {
         updateRecentFilesMenu();
-        refreshAST(); // initial refreshing
-        sourceEditorController.moveCaret(0, 0);
 
-        // this is the only place where getSelectionEvents is called
-        getSelectionEvents().distinct().subscribe(n -> CompositeSelectionSource.super.bubbleDown(n));
+        sourceEditorController.currentRuleResultsProperty().bind(ruleEditorsController.currentRuleResults());
+
+        getGlobalState().writeableGlobalLanguageVersionProperty().bind(sourceEditorController.languageVersionProperty());
+
+        metricPaneController.numAvailableMetrics().values().subscribe(n -> {
+            metricResultsTab.setText("Metrics\t(" + (n == 0 ? "none" : n) + ")");
+            metricResultsTab.setDisable(n == 0);
+        });
     }
 
 
-    @Override
-    public ObservableSet<? extends NodeSelectionSource> getSubSelectionSources() {
-        return FXCollections.observableSet(nodeInfoPanelController, sourceEditorController, ruleEditorsController);
-    }
 
     @Override
     public void shutdown() {
-        try {
-            SettingsPersistenceUtil.persistProperties(this, DesignerUtil.getSettingsFile());
-        } catch (IOException ioe) {
-            // nevermind
-            ioe.printStackTrace();
-        }
-        super.shutdown();
-    }
-
-
-    /**
-     * Attempts to refresh the AST with the up-to-date source,
-     * also updating XPath results.
-     */
-    public void refreshAST() {
-        Optional<Node> root = sourceEditorController.refreshAST();
-
-        if (root.isPresent()) {
-            ruleEditorsController.refreshRuleResults();
-        } else {
-            ruleEditorsController.invalidateResults(true);
-        }
-    }
-
-
-    /**
-     * Returns a wrapper around the given node that gives access
-     * to its textual representation in the editor area.
-     */
-    public TextAwareNodeWrapper wrapNode(Node node) {
-        return sourceEditorController.wrapNode(node);
-    }
-
-
-    /**
-     * Highlight a list of name occurrences.
-     *
-     * @param occurrences May be empty but never null.
-     */
-    public void highlightAsNameOccurences(List<NameOccurrence> occurrences) {
-        sourceEditorController.highlightNameOccurrences(occurrences);
-    }
-
-    /**
-     * Runs an XPath (2.0) query on the current AST.
-     * Performs no side effects.
-     *
-     * @param query the query
-     * @return the matched nodes
-     * @throws XPathEvaluationException if the query fails
-     */
-    public List<Node> runXPathQuery(String query) throws XPathEvaluationException {
-        return sourceEditorController.getCompilationUnit()
-                                     .map(n -> new XPathEvaluator().evaluateQuery(n,
-                                                                                  getLanguageVersion(),
-                                                                                  XPathRuleQuery.XPATH_2_0,
-                                                                                  query,
-                                                                                  Collections.emptyList()))
-                                     .orElseGet(Collections::emptyList);
-    }
-
-
-    /**
-     * Handles nodes that potentially caused an error.
-     * This can for example highlight nodes on the
-     * editor. Effects can be reset with {@link #resetSelectedErrorNodes()}.
-     *
-     * @param n Node
-     */
-    public void handleSelectedNodeInError(List<Node> n) {
-        resetSelectedErrorNodes();
-        sourceEditorController.highlightErrorNodes(n);
-    }
-
-    public void resetSelectedErrorNodes() {
-        sourceEditorController.clearErrorNodes();
-    }
-
-    public void resetXPathResults() {
-        sourceEditorController.clearXPathHighlight();
-    }
-
-    /** Replaces previously highlighted XPath results with the given nodes. */
-    public void highlightXPathResults(List<Node> nodes) {
-        sourceEditorController.highlightXPathResults(nodes);
-    }
-
-    private void showLicensePopup() {
-        Alert licenseAlert = new Alert(AlertType.INFORMATION);
-        licenseAlert.setWidth(500);
-        licenseAlert.setHeaderText("License");
-
-        ScrollPane scroll = new ScrollPane();
-        try {
-            scroll.setContent(new TextArea(IOUtils.toString(getClass().getResourceAsStream("LICENSE"),
-                    StandardCharsets.UTF_8)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        licenseAlert.getDialogPane().setContent(scroll);
-        licenseAlert.showAndWait();
+        getDesignerRoot().getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this);
     }
 
 
@@ -274,10 +163,9 @@ public class MainDesignerController extends AbstractController<AbstractControlle
             try {
                 String source = IOUtils.toString(Files.newInputStream(file.toPath()), StandardCharsets.UTF_8);
                 sourceEditorController.setText(source);
-                LanguageVersion guess = DesignerUtil.getLanguageVersionFromExtension(file.getName());
+                LanguageVersion guess = LanguageRegistryUtil.getLanguageVersionFromExtension(file.getName());
                 if (guess != null) { // guess the language from the extension
                     sourceEditorController.setLanguageVersion(guess);
-                    refreshAST();
                 }
 
                 recentFiles.push(file);
@@ -325,31 +213,6 @@ public class MainDesignerController extends AbstractController<AbstractControlle
     }
 
 
-    /**
-     * Called when the AST is updated to update all parts of the UI.
-     */
-    public void invalidateAst() {
-        nodeInfoPanelController.setFocusNode(null);
-        ruleEditorsController.invalidateResults(false);
-        sourceEditorController.setFocusNode(null);
-    }
-
-
-    public LanguageVersion getLanguageVersion() {
-        return sourceEditorController.getLanguageVersion();
-    }
-
-
-    public void setLanguageVersion(LanguageVersion version) {
-        sourceEditorController.setLanguageVersion(version);
-    }
-
-
-    public Val<LanguageVersion> languageVersionProperty() {
-        return sourceEditorController.languageVersionProperty();
-    }
-
-
     @PersistentProperty
     public String getRecentFiles() {
         return recentFiles.stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator));
@@ -374,14 +237,15 @@ public class MainDesignerController extends AbstractController<AbstractControlle
 
 
     @Override
-    public List<AbstractController<MainDesignerController>> getChildren() {
-        return Arrays.asList(ruleEditorsController, sourceEditorController, nodeInfoPanelController);
+    public List<AbstractController> getChildren() {
+        return Arrays.asList(ruleEditorsController,
+                             sourceEditorController,
+                             nodeDetailsTabController,
+                             metricPaneController,
+                             scopesPanelController);
     }
 
 
-    public Optional<Node> getCompilationUnit() {
-        return sourceEditorController.getCompilationUnit();
-    }
 
     @Override
     public String getDebugName() {

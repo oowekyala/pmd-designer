@@ -12,10 +12,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import net.sourceforge.pmd.PMDVersion;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.DesignerRootImpl;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 
+import com.sun.javafx.fxml.builder.ProxyBuilder;
 import javafx.application.Application;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
@@ -33,50 +37,87 @@ import javafx.stage.Stage;
  */
 public class Designer extends Application {
 
-    private boolean parseParameters(Parameters params) {
-        List<String> raw = params.getRaw();
-        if (!raw.contains("-v")
-            && !raw.contains("--verbose")) {
-            // error output is disabled by default
+    private long initStartTimeMillis;
+    private DesignerRoot owner;
 
-            System.err.close();
-            return false;
-        }
-        return true;
+    public Designer() {
+        initStartTimeMillis = System.currentTimeMillis();
     }
 
 
     @Override
     public void start(Stage stage) throws IOException {
-        boolean isDeveloperMode = parseParameters(getParameters());
+        DesignerParams params = getParameters() == null ? new DesignerParams() : new DesignerParams(getParameters());
+        start(stage, new DesignerRootImpl(stage, params));
+    }
 
+    public void start(Stage stage, DesignerRoot owner) throws IOException {
+        this.owner = owner;
+
+        // TODO should display the 4 segment version number
+        stage.setTitle("PMD Rule Designer (v " + PMDVersion.VERSION + ')');
+        setIcons(stage);
+
+        System.out.print(stage.getTitle() + " initializing... ");
 
         FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("designer.fxml"));
 
-        DesignerRoot owner = new DesignerRoot(stage, isDeveloperMode);
         MainDesignerController mainController = new MainDesignerController(owner);
 
-        NodeInfoPanelController nodeInfoPanelController = new NodeInfoPanelController(mainController);
-        RuleEditorsController ruleEditorsController = new RuleEditorsController(mainController);
-        SourceEditorController sourceEditorController = new SourceEditorController(mainController);
+        loader.setBuilderFactory(type -> {
 
-        loader.setControllerFactory(controllerFactoryKnowing(mainController,
-                                                             nodeInfoPanelController,
-                                                             ruleEditorsController,
-                                                             sourceEditorController));
+            boolean needsRoot = Arrays.stream(type.getConstructors()).anyMatch(it -> ArrayUtils.contains(it.getParameterTypes(), DesignerRoot.class));
+
+            if (needsRoot) {
+                // Controls that need the DesignerRoot can declare a constructor
+                // with a parameter w/ signature @NamedArg("designerRoot") DesignerRoot
+                // to be injected with the relevant instance of the app.
+                ProxyBuilder<Object> builder = new ProxyBuilder<>(type);
+                builder.put("designerRoot", owner);
+                return builder;
+            } else {
+                return null; //use default
+            }
+        });
+
+        loader.setControllerFactory(DesignerUtil.controllerFactoryKnowing(
+            mainController,
+            new MetricPaneController(owner),
+            new ScopesPanelController(owner),
+            new NodeDetailPaneController(owner),
+            new RuleEditorsController(owner),
+            new SourceEditorController(owner)
+        ));
 
         stage.setOnCloseRequest(e -> mainController.shutdown());
 
         Parent root = loader.load();
         Scene scene = new Scene(root);
 
-        stage.setTitle("PMD Rule Designer (v " + PMDVersion.VERSION + ')');
-        setIcons(stage);
-
         stage.setScene(scene);
+
+        if (!owner.isDeveloperMode()) {
+            // only close after initialization succeeded.
+            // but before stage.show to reduce unwanted noise
+            System.err.close();
+        }
+
         stage.show();
+
+        long initTime = System.currentTimeMillis() - initStartTimeMillis;
+
+        System.out.println("done in " + initTime + "ms.");
+        if (!owner.isDeveloperMode()) {
+            System.out.println("Run with --verbose parameter to enable error output.");
+        }
     }
 
+    /**
+     * Only set after {@link #start(Stage)} is called.
+     */
+    public DesignerRoot getDesignerRoot() {
+        return owner;
+    }
 
     private void setIcons(Stage primaryStage) {
         ObservableList<Image> icons = primaryStage.getIcons();
@@ -96,7 +137,13 @@ public class Designer extends Application {
     }
 
 
+    @SuppressWarnings("PMD.AvoidCatchingThrowable")
     public static void main(String[] args) {
-        launch(args);
+        try {
+            launch(args);
+        } catch (Throwable unrecoverable) {
+            unrecoverable.printStackTrace();
+            System.exit(1);
+        }
     }
 }
