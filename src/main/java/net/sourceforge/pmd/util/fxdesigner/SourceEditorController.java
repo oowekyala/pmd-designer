@@ -204,26 +204,41 @@ public class SourceEditorController extends AbstractController {
                 return emptyList();
             }
             // fallthrough
-
+        case "TypeArgument":
+            if (n.jjtGetNumChildren() == 0) {
+                // wildcard
+                return emptyList();
+            }
         case "Expression":
         case "PrimaryExpression":
         case "VariableInitializer":
         case "Type":
+        case "TypeBound":
+        case "WildcardBound":
         case "ReferenceType":
         case "PrimaryPrefix":
         case "PrimarySuffix":
         case "AssignmentOperator":
+        case "Annotation":
+        case "MemberValue":
+        case "MemberValuePairs":
         case "MemberSelector":
             // removed
             return Arrays.asList("removal-level", "depth-0");
         case "BlockStatement":
         case "Statement":
-        case "Annotation":
             return Collections.singletonList("proposed-removal");
         case "Name":
-            return "ImportDeclaration".equals(n.jjtGetParent().getXPathNodeName())
-                   ? Arrays.asList("removal-level", "depth-1") : emptyList();
-        case "TypeArgument":
+            switch (n.jjtGetParent().getXPathNodeName()) {
+            case "ImportDeclaration":
+                return Arrays.asList("removal-level", "depth-1");
+            case "MarkerAnnotation":
+            case "SingleMemberAnnotation":
+            case "NormalAnnotation":
+                return Arrays.asList("removal-level", "depth-0");
+            default:
+                return emptyList();
+            }
         case "ClassOrInterfaceBodyDeclaration":
         case "AnnotationTypeBodyDeclaration":
         case "TypeDeclaration":
