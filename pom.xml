@@ -363,7 +363,7 @@
         </dependency>
 
         <!-- Other libraries -->
-
+        
         <dependency>
             <groupId>org.fxmisc.richtext</groupId>
             <artifactId>richtextfx</artifactId>

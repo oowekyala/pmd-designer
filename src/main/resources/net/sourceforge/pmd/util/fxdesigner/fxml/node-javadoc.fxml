@@ -1,18 +1,15 @@
-<?import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.web.WebView?>
 <AnchorPane stylesheets="@../css/designer.css"
             xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="net.sourceforge.pmd.util.fxdesigner.NodeJavadocController">
-    <ToolbarTitledPane
-            title="Javadoc"
-            collapsible="false"
-            AnchorPane.bottomAnchor="0.0"
-            AnchorPane.leftAnchor="0.0"
-            AnchorPane.rightAnchor="0.0"
-            AnchorPane.topAnchor="0.0">
-        <WebView fx:id="webView" />
+    <WebView fx:id="webView"
+             AnchorPane.bottomAnchor="0.0"
+             AnchorPane.leftAnchor="0.0"
+             AnchorPane.rightAnchor="0.0"
+             AnchorPane.topAnchor="0.0">
 
-    </ToolbarTitledPane>
+
+    </WebView>
 </AnchorPane>

@@ -5,6 +5,7 @@
 package net.sourceforge.pmd.util.fxdesigner.util.reactfx;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -156,5 +157,9 @@ public final class VetoableEventStream<I> extends EventStreamBase<I> implements 
      */
     public static AwaitingEventStream<Boolean> vetoableYes(EventStream<Boolean> input, Duration vetoPeriod) {
         return vetoableFrom(input, b -> b, (a, b) -> !b, (a, b) -> b, vetoPeriod);
+    }
+
+    public static <T> AwaitingEventStream<T> vetoableNull(EventStream<T> input, Duration vetoPeriod) {
+        return vetoableFrom(input, Objects::isNull, (a, b) -> b != null, (a, b) -> null, vetoPeriod);
     }
 }

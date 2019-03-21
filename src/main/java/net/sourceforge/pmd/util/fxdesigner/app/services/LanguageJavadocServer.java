@@ -67,8 +67,8 @@ public class LanguageJavadocServer implements ApplicationComponent {
 
     }
 
-    public Optional<URL> docUrl(Class<? extends Node> clazz) {
-        if (!isReady()) {
+    public Optional<URL> docUrl(Class<? extends Node> clazz, boolean compact) {
+        if (!isReady()) { // there's a missed opportunity for parallelism here
             return Optional.empty();
         } else {
 
@@ -84,6 +84,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
             }
         }
     }
+
 
     public boolean isReady() {
         try {

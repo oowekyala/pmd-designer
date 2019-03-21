@@ -7,6 +7,7 @@ package net.sourceforge.pmd.util.fxdesigner.util.reactfx;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -34,6 +35,10 @@ public final class ReactfxUtil {
 
     private ReactfxUtil() {
 
+    }
+
+    public static <T> EventStream<T> distinctBetween(EventStream<T> ts, Duration duration) {
+        return VetoableEventStream.vetoableFrom(ts, t -> true, Objects::equals, (t, s) -> s, duration);
     }
 
     /**
@@ -66,6 +71,10 @@ public final class ReactfxUtil {
      */
     public static Val<Boolean> vetoableYes(Val<Boolean> base, Duration vetoPeriod) {
         return latestValue(VetoableEventStream.vetoableYes(base.values(), vetoPeriod)).orElseConst(false);
+    }
+
+    public static <T> Val<T> vetoableNull(Val<T> base, Duration duration) {
+        return latestValue(VetoableEventStream.vetoableNull(base.values(), duration));
     }
 
     /** Like the other overload, using the setter of the ui property. */

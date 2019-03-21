@@ -4,6 +4,7 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app;
 
+import java.time.Duration;
 import java.util.Objects;
 
 import org.reactfx.EventSource;
@@ -12,6 +13,7 @@ import org.reactfx.EventStream;
 import net.sourceforge.pmd.util.fxdesigner.MainDesignerController;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 
 /**
@@ -56,9 +58,10 @@ public class MessageChannel<T> {
      */
     public EventStream<T> messageStream(boolean alwaysHandle,
                                         ApplicationComponent component) {
-        return channel.hook(message -> component.logMessageTrace(message, () -> component.getDebugName() + " is handling message " + message))
-                       .filter(message -> alwaysHandle || !component.equals(message.getOrigin()))
-                       .map(Message::getContent);
+        return ReactfxUtil.distinctBetween(channel, Duration.ofMillis(100))
+                          .hook(message -> component.logMessageTrace(message, () -> component.getDebugName() + " is handling message " + message))
+                          .filter(message -> alwaysHandle || !component.equals(message.getOrigin()))
+                          .map(Message::getContent);
     }
 
 

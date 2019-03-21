@@ -259,13 +259,8 @@ public class SourceEditorController extends AbstractController {
 
         // veto null events to ignore null compilation units if they're
         // followed by a valid one quickly
-        VetoableEventStream.vetoableFrom(
-            astManager.compilationUnitProperty().values(),
-            Objects::isNull,
-            (a, b) -> b != null,
-            (a, b) -> b,
-            Duration.ofMillis(500)
-        ).subscribe(globalCompilationUnit::setValue);
+        VetoableEventStream.vetoableNull(astManager.compilationUnitProperty().values(), Duration.ofMillis(500))
+                           .subscribe(globalCompilationUnit::setValue);
 
 
         rewire(astManager.languageVersionProperty(), languageVersionUIProperty);
