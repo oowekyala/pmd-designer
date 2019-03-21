@@ -135,6 +135,10 @@ public class XmlInterfaceVersion1 extends XmlInterface {
                 // Even when a built-in converter is available, objects are
                 // still converted with Object::toString which fucks up the
                 // conversion...
+                if (keyValue.getValue() == null) {
+                    //FIXME later
+                    continue;
+                }
                 String value = (String) ConvertUtils.lookup(keyValue.getValue().getClass()).convert(String.class, keyValue.getValue());
                 if (value == null) {
                     continue;

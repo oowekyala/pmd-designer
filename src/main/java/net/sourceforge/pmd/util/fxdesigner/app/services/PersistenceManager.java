@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
+import java.nio.file.Path;
+
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 
@@ -15,6 +17,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
  */
 public interface PersistenceManager extends ApplicationComponent {
 
+    Path getSettingsDirectory();
 
     void restoreSettings(SettingsOwner settingsOwner);
 

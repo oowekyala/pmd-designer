@@ -6,6 +6,7 @@ package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
@@ -19,13 +20,23 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil;
 public class OnDiskPersistenceManager implements PersistenceManager {
 
     private final DesignerRoot root;
+    private final Path settingsDir;
     private final File input;
     private final File output;
 
-    public OnDiskPersistenceManager(DesignerRoot root, File input, File output) {
+    public OnDiskPersistenceManager(DesignerRoot root,
+                                    Path settingsDir,
+                                    File input,
+                                    File output) {
         this.root = root;
+        this.settingsDir = settingsDir;
         this.input = input;
         this.output = output;
+    }
+
+    @Override
+    public Path getSettingsDirectory() {
+        return settingsDir;
     }
 
     @Override

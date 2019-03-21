@@ -22,7 +22,8 @@ import javafx.application.Application.Parameters;
 public final class DesignerParams {
 
     private static final Path PMD_SETTINGS_DIR = Paths.get(System.getProperty("user.home"), ".pmd");
-    private static final File DEFAULT_SETTINGS_FILE = PMD_SETTINGS_DIR.resolve("designer-7.0.0.xml").toFile();
+    private static final Path THIS_DESIGNER_SETTINGS_DIR = PMD_SETTINGS_DIR.resolve("designer-" + Designer.VERSION);
+    private static final File DEFAULT_SETTINGS_FILE = THIS_DESIGNER_SETTINGS_DIR.resolve("appstate.xml").toFile();
 
 
     private static final String SETTINGS_INPUT = "load-from";
@@ -66,6 +67,9 @@ public final class DesignerParams {
         processDefaults();
     }
 
+    public Path getSettingsDirectory() {
+        return THIS_DESIGNER_SETTINGS_DIR;
+    }
 
     private void processDefaults() {
         if (persistedInputFile == null && persistedOutputFile == null) {

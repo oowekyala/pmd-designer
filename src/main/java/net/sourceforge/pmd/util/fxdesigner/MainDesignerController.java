@@ -95,6 +95,8 @@ public class MainDesignerController extends AbstractController {
     private MetricPaneController metricPaneController;
     @FXML
     private ScopesPanelController scopesPanelController;
+    @FXML
+    private NodeJavadocController nodeJavadocController;
 
 
     // we cache it but if it's not used the FXML is not created, etc
@@ -260,6 +262,7 @@ public class MainDesignerController extends AbstractController {
                              sourceEditorController,
                              nodeDetailsTabController,
                              metricPaneController,
+                             nodeJavadocController,
                              scopesPanelController);
     }
 

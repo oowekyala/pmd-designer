@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import net.sourceforge.pmd.lang.Language;
+import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
 
 
 /**

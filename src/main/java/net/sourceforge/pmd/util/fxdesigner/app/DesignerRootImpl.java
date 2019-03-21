@@ -14,6 +14,7 @@ import net.sourceforge.pmd.util.fxdesigner.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLoggerImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
+import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocServer;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.app.services.OnDiskPersistenceManager;
@@ -54,10 +55,12 @@ public final class DesignerRootImpl implements DesignerRoot {
             e.isControlDown() && e.getCode() == KeyCode.CONTROL));
 
         PersistenceManager manager = new OnDiskPersistenceManager(this,
+                                                                  params.getSettingsDirectory(),
                                                                   params.getPersistedInputFile(),
                                                                   params.getPersistedOutputFile());
 
         registerService(PERSISTENCE_MANAGER, manager);
+        registerService(JAVADOC_SERVER, new JavadocServer(this));
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
         registerService(APP_STATE_HOLDER, new GlobalStateHolderImpl());
     }

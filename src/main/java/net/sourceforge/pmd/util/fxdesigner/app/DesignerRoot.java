@@ -10,6 +10,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.NodeSelection
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
+import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocServer;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.RichTextMapper;
 
@@ -34,6 +35,8 @@ public interface DesignerRoot {
     AppServiceDescriptor<MessageChannel<NodeSelectionEvent>> NODE_SELECTION_CHANNEL = new AppServiceDescriptor<>(MessageChannel.class);
     /** Holds global state about the editor. */
     AppServiceDescriptor<GlobalStateHolder> APP_STATE_HOLDER = new AppServiceDescriptor<>(GlobalStateHolder.class);
+
+    AppServiceDescriptor<JavadocServer> JAVADOC_SERVER = new AppServiceDescriptor<>(JavadocServer.class);
 
 
     /**

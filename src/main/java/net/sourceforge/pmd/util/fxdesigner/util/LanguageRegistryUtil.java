@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
@@ -76,12 +77,15 @@ public final class LanguageRegistryUtil {
         return supportedLanguageVersions;
     }
 
-    public static Language findLanguageByShortName(String shortName) {
+    public static Stream<Language> getSupportedLanguages() {
         return getSupportedLanguageVersions().stream()
                                              .map(LanguageVersion::getLanguage)
-                                             .distinct()
-                                             .filter(it -> it.getShortName().equals(shortName))
-                                             .findFirst()
-                                             .get();
+                                             .distinct();
+    }
+
+    public static Language findLanguageByShortName(String shortName) {
+        return getSupportedLanguages().filter(it -> it.getShortName().equals(shortName))
+                                      .findFirst()
+                                      .get();
     }
 }

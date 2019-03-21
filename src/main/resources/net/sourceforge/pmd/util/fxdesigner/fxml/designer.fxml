@@ -78,6 +78,9 @@
                                         <Tab text="Scopes">
                                             <fx:include source="scopes-panel.fxml" fx:id="scopesPanel"/>
                                         </Tab>
+                                        <Tab text="Javadoc">
+                                            <fx:include source="node-javadoc.fxml" fx:id="nodeJavadoc"/>
+                                        </Tab>
                                     </tabs>
                                 </TabPane>
                             </left>

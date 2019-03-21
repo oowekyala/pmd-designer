@@ -4,12 +4,12 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.controllerFactoryKnowing;
-
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -26,7 +26,6 @@ import com.sun.javafx.fxml.builder.ProxyBuilder;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -41,6 +40,34 @@ import javafx.stage.Stage;
  * @since 6.0.0
  */
 public class Designer extends Application {
+
+    /**
+     * Constant that contains always the current version of PMD.
+     */
+    public static final String VERSION;
+    private static final String UNKNOWN_VERSION = "unknown";
+
+    private static final Logger LOG = Logger.getLogger(Designer.class.getName());
+
+
+    /**
+     * Determines the version from maven's generated pom.properties file.
+     */
+    static {
+        String pmdVersion = UNKNOWN_VERSION;
+        try (InputStream stream = PMDVersion.class.getResourceAsStream("/META-INF/maven/net.sourceforge.pmd/pmd-ui/pom.properties")) {
+            if (stream != null) {
+                final Properties properties = new Properties();
+                properties.load(stream);
+                pmdVersion = properties.getProperty("version");
+            }
+        } catch (final IOException e) {
+            LOG.log(Level.FINE, "Couldn't determine version of PMD", e);
+        }
+
+        VERSION = pmdVersion;
+    }
+
 
     private long initStartTimeMillis;
     private DesignerRoot owner;
@@ -92,6 +119,7 @@ public class Designer extends Application {
             new ScopesPanelController(owner),
             new NodeDetailPaneController(owner),
             new XPathPanelController(owner),
+            new NodeJavadocController(owner),
             new SourceEditorController(owner)
         ));
 
