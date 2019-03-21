@@ -65,6 +65,8 @@ public class MainDesignerController extends AbstractController {
     @FXML
     private MenuItem openFileMenuItem;
     @FXML
+    private MenuItem saveMenuItem;
+    @FXML
     private MenuItem licenseMenuItem;
     @FXML
     private Menu openRecentMenu;
@@ -117,6 +119,7 @@ public class MainDesignerController extends AbstractController {
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
+        saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
 
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup());
