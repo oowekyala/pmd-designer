@@ -17,29 +17,29 @@
 
 }
 
-.tree-view {
+@removal-color-stack: fade(red, 15), fade(yellow, 15), fade(yellow, 5),;
+
+
+.removal-level-mixin(@selection-color) {
   .tree-cell {
+    &.removal-level {
+      @foreach-i: {
+        @color: extract(@removal-color-stack, @i + 1);
+        -fx-background-color: @color; &:focused {
+          -fx-background-color: linear-gradient(to right, @color 0%, @selection-color);
+        }
+      };
 
-    &.removed {
-      -fx-background-color: fade(red, 15);
+      .make-depth-classes(length(@removal-color-stack) - 1, @foreach-i);
     }
+  }
+}
 
-    &.proposed-removal {
-      -fx-background-color: fade(yellow, 15);
-    }
+.ast-tree-view {
+  .removal-level-mixin(@darker-accent-border);
 
-    &.proposed-removal-2 {
-      -fx-background-color: fade(yellow, 5);
-    }
-
-
-    &:selected {
-      -fx-background-color: @darker-accent-border;
-
-      &:focused {
-        -fx-background-color: @selection-focus-color;
-      }
-    }
+  &:focused {
+    .removal-level-mixin(@selection-focus-color);
   }
 }
 

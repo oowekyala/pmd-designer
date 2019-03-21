@@ -55,6 +55,7 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
         designerRoot = null;
         baseSelectionEvents = null;
         suppressibleSelectionEvents = null;
+        getStyleClass().addAll("ast-tree-view");
     }
 
 
@@ -62,6 +63,8 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
         designerRoot = root;
         baseSelectionEvents = new EventSource<>();
         suppressibleSelectionEvents = baseSelectionEvents.suppressible();
+
+        getStyleClass().addAll("ast-tree-view");
 
         initNodeSelectionHandling(root, suppressibleSelectionEvents, false);
 

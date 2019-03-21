@@ -152,10 +152,14 @@ public final class PmdCoordinatesSystem {
     public static Optional<Node> findNodeCovering(Node root, TextRange range, boolean exact) {
         return findNodeAt(root, range.startPos).map(innermost -> {
             for (Node parent : toIterable(parentIterator(innermost, true))) {
-                if (!exact && rangeOf(parent).includes(range)) {
+                TextRange parentRange = rangeOf(parent);
+                if (!exact && parentRange.contains(range)) {
                     return parent;
-                } else if (exact && rangeOf(parent).equals(range)) {
+                } else if (exact && parentRange.equals(range)) {
                     return findHighestSameRangeParent(parent);
+                } else if (exact && parentRange.contains(range)) {
+                    // if it isn't the same, then we can't find better so better stop looking
+                    return null;
                 }
             }
             return null;
@@ -209,7 +213,7 @@ public final class PmdCoordinatesSystem {
             this.endPos = endPos;
         }
 
-        public boolean includes(TextRange range) {
+        public boolean contains(TextRange range) {
             return startPos.compareTo(range.startPos) <= 0 && endPos.compareTo(range.endPos) >= 0;
         }
 

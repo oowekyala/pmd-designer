@@ -17,6 +17,7 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.control.Tooltip?>
 <?import java.lang.String?>
+<?import javafx.scene.layout.Pane?>
 <BorderPane xmlns="http://javafx.com/javafx/8"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="net.sourceforge.pmd.util.fxdesigner.SourceEditorController">
@@ -73,6 +74,7 @@
                                     AnchorPane.rightAnchor="0.0"
                                     AnchorPane.topAnchor="0.0">
                                 <toolbarItems>
+                                    <Pane prefWidth="10"/>
                                     <Label fx:id="numNewNodesLabel"/>
                                 </toolbarItems>
 
@@ -94,8 +96,10 @@
                                     AnchorPane.rightAnchor="0.0"
                                     AnchorPane.topAnchor="0.0">
                                 <toolbarItems>
+                                    <!-- spacer-->
+                                    <Pane prefWidth="10"/>
                                     <Label fx:id="numOldNodesLabel" />
-                                    <ToggleButton fx:id="highlightRemovedOldNodesToggle" selected="true">
+                                    <ToggleButton fx:id="highlightRemovedOldNodesToggle" styleClass="icon-button" selected="true">
                                         <graphic>
                                             <FontIcon iconLiteral="fas-tags" />
                                         </graphic>

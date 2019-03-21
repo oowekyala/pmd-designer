@@ -8,11 +8,14 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.ArrayUtils;
 
 import net.sourceforge.pmd.PMDVersion;
+import net.sourceforge.pmd.lang.ast.xpath.Attribute;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRootImpl;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
@@ -55,6 +58,8 @@ public class Designer extends Application {
         // TODO should display the 4 segment version number
         stage.setTitle("PMD Rule Designer (v " + PMDVersion.VERSION + ')');
         setIcons(stage);
+
+        Logger.getLogger(Attribute.class.getName()).setLevel(Level.OFF);
 
         System.out.print(stage.getTitle() + " initializing... ");
 
