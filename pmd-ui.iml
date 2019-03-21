@@ -11,9 +11,17 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="Maven: com.github.oowekyala:fx-live-templates:1.0" level="project" />
-    <orderEntry type="library" name="Maven: com.github.oowekyala:fx-live-templates:1.0" level="project" />
-    <orderEntry type="library" name="Maven: com.github.oowekyala:fx-live-templates:1.0" level="project" />
+    <orderEntry type="library" name="Maven: net.sourceforge.pmd:pmd-core:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-apex:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-apex-jorje:lib:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-java:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-javascript:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-jsp:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-plsql:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-visualforce:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-vm:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-xml:7.0.0-SNAPSHOT" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Maven: net.sourceforge.pmd:pmd-oldjava:6.13.0-SNAPSHOT" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.openjfx:javafx-base:11" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.openjfx:javafx-base:linux:11" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="Maven: org.openjfx:javafx-controls:11" level="project" />
