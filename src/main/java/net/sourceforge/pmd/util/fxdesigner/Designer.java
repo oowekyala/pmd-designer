@@ -119,7 +119,6 @@ public class Designer extends Application {
             new ScopesPanelController(owner),
             new NodeDetailPaneController(owner),
             new XPathPanelController(owner),
-            new NodeJavadocController(owner),
             new SourceEditorController(owner)
         ));
 

@@ -5,12 +5,12 @@
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
 <?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.control.SeparatorMenuItem?>
 <AnchorPane prefHeight="750.0" prefWidth="1200.0" stylesheets="@../css/designer.css" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="net.sourceforge.pmd.util.fxdesigner.MainDesignerController">
     <children>
         <BorderPane prefHeight="600.0" prefWidth="900.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -41,6 +41,10 @@
                                             <graphic>
                                                 <!-- TODO Font awesome 5.0.1 (apparently not supported) -->
                                                 <!--<FontIcon iconLiteral="fab-java"/>-->
+                                            </graphic>
+                                        </MenuItem>
+                                        <MenuItem fx:id="javadocMenuItem" text="_Javadoc">
+                                            <graphic>
                                             </graphic>
                                         </MenuItem>
                                     </items>
@@ -77,9 +81,6 @@
                                         </Tab>
                                         <Tab text="Scopes">
                                             <fx:include source="scopes-panel.fxml" fx:id="scopesPanel"/>
-                                        </Tab>
-                                        <Tab text="Javadoc">
-                                            <fx:include source="node-javadoc.fxml" fx:id="nodeJavadoc"/>
                                         </Tab>
                                     </tabs>
                                 </TabPane>

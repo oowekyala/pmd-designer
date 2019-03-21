@@ -24,9 +24,11 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LimitedSizeStack;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
+import net.sourceforge.pmd.util.fxdesigner.util.StageBuilder;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
 import javafx.beans.NamedArg;
@@ -41,13 +43,14 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.StageStyle;
 
 
 /**
  * Main controller of the app. Mediator for subdivisions of the UI.
  *
  * @author Clément Fournier
- * @see NodeInfoPanelController
  * @see SourceEditorController
  * @see EventLogController
  * @see XPathPanelController
@@ -58,6 +61,8 @@ public class MainDesignerController extends AbstractController {
 
 
     /* Menu bar */
+    @FXML
+    private MenuItem javadocMenuItem;
     @FXML
     private MenuItem setupAuxclasspathMenuItem;
     @FXML
@@ -95,12 +100,11 @@ public class MainDesignerController extends AbstractController {
     private MetricPaneController metricPaneController;
     @FXML
     private ScopesPanelController scopesPanelController;
-    @FXML
-    private NodeJavadocController nodeJavadocController;
 
 
     // we cache it but if it's not used the FXML is not created, etc
     private final SoftReferenceCache<EventLogController> eventLogController;
+    private final SoftReferenceCache<NodeJavadocController> nodeJavadocController;
 
     // Other fields
     private final Stack<File> recentFiles = new LimitedSizeStack<>(5);
@@ -109,6 +113,7 @@ public class MainDesignerController extends AbstractController {
     public MainDesignerController(@NamedArg("designerRoot") DesignerRoot designerRoot) {
         super(designerRoot);
         eventLogController = new SoftReferenceCache<>(() -> new EventLogController(designerRoot));
+        nodeJavadocController = new SoftReferenceCache<>(() -> new NodeJavadocController(designerRoot));
     }
 
 
@@ -121,6 +126,7 @@ public class MainDesignerController extends AbstractController {
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
+        javadocMenuItem.setOnAction(e -> nodeJavadocController.get().showYourself());
         saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
 
@@ -262,7 +268,6 @@ public class MainDesignerController extends AbstractController {
                              sourceEditorController,
                              nodeDetailsTabController,
                              metricPaneController,
-                             nodeJavadocController,
                              scopesPanelController);
     }
 

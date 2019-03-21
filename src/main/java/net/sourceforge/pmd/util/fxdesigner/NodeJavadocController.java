@@ -14,9 +14,14 @@ import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.StageBuilder;
 
 import javafx.fxml.FXML;
 import javafx.scene.web.WebView;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 /**
  * The javadoc pane.
@@ -28,9 +33,17 @@ public class NodeJavadocController extends AbstractController implements NodeSel
     @FXML
     private WebView webView;
 
+    private final Stage myStage;
 
     protected NodeJavadocController(DesignerRoot root) {
         super(root);
+
+        myStage = new StageBuilder().withOwner(getMainStage())
+                                    .withModality(Modality.NONE)
+                                    .withStyle(StageStyle.DECORATED)
+                                    .withFxml(DesignerUtil.getFxml("node-javadoc.fxml"), this)
+                                    .withTitle("Node Javadoc")
+                                    .newStage();
     }
 
     @Override
@@ -39,6 +52,9 @@ public class NodeJavadocController extends AbstractController implements NodeSel
         initNodeSelectionHandling(getDesignerRoot(), EventStreams.never(), false);
     }
 
+    public void showYourself() {
+        myStage.show();
+    }
 
     @Override
     public void setFocusNode(Node node, DataHolder options) {
