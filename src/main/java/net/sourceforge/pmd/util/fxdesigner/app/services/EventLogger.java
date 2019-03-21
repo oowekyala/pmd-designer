@@ -4,10 +4,10 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.countNotMatching;
-
 import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
+
+import com.github.oowekyala.rxstring.ReactfxExtensions;
 
 /**
  * Logs events. Stores the whole log in case no view was open.
@@ -19,7 +19,8 @@ public interface EventLogger {
 
     /** Number of log entries that were not yet examined by the user. */
     default Val<Integer> numNewLogEntriesProperty() {
-        return countNotMatching(getLog().map(LogEntry::wasExaminedProperty));
+        return LiveList.sizeOf(ReactfxExtensions.flattenVals(getLog().map(LogEntry::wasExaminedProperty))
+                                                .filtered(read -> !read));
     }
 
 

@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.controllerFactoryKnowing;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -22,7 +24,9 @@ import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 
 import com.sun.javafx.fxml.builder.ProxyBuilder;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -44,7 +48,6 @@ public class Designer extends Application {
     public Designer() {
         initStartTimeMillis = System.currentTimeMillis();
     }
-
 
     @Override
     public void start(Stage stage) throws IOException {
@@ -92,7 +95,13 @@ public class Designer extends Application {
             new SourceEditorController(owner)
         ));
 
-        stage.setOnCloseRequest(e -> mainController.shutdown());
+        stage.setOnCloseRequest(e -> {
+            owner.getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(mainController);
+            Platform.exit();
+            // VM sometimes fails to exit for no apparent reason
+            // all our threads are killed so it's not our fault
+            System.exit(0);
+        });
 
         Parent root = loader.load();
         Scene scene = new Scene(root);

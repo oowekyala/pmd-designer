@@ -75,4 +75,13 @@ public final class LanguageRegistryUtil {
         }
         return supportedLanguageVersions;
     }
+
+    public static Language findLanguageByShortName(String shortName) {
+        return getSupportedLanguageVersions().stream()
+                                             .map(LanguageVersion::getLanguage)
+                                             .distinct()
+                                             .filter(it -> it.getShortName().equals(shortName))
+                                             .findFirst()
+                                             .get();
+    }
 }

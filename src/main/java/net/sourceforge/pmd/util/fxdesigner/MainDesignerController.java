@@ -122,7 +122,7 @@ public class MainDesignerController extends AbstractController {
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup());
 
         openEventLogMenuItem.setOnAction(e -> {
-            EventLogController wizard = eventLogController.getValue();
+            EventLogController wizard = eventLogController.get();
             Subscription parentToWizSubscription = wizard.errorNodesProperty().values().subscribe(sourceEditorController.currentErrorNodesProperty()::setValue);
             wizard.showPopup(parentToWizSubscription);
         });
@@ -145,12 +145,6 @@ public class MainDesignerController extends AbstractController {
             metricResultsTab.setText("Metrics\t(" + (n == 0 ? "none" : n) + ")");
             metricResultsTab.setDisable(n == 0);
         });
-    }
-
-
-
-    public void shutdown() {
-        getDesignerRoot().getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this);
     }
 
 

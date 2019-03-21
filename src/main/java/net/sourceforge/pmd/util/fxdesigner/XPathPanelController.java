@@ -6,6 +6,8 @@ package net.sourceforge.pmd.util.fxdesigner;
 
 
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
+import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewire;
+import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewireInit;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -24,6 +26,7 @@ import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.reactfx.EventStreams;
+import org.reactfx.Subscription;
 import org.reactfx.SuspendableEventStream;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.value.Val;
@@ -31,18 +34,19 @@ import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.lang.rule.XPathRule;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluator;
 import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.XPathAutocompleteProvider;
@@ -54,7 +58,6 @@ import net.sourceforge.pmd.util.fxdesigner.util.controls.HelpfulPlaceholder;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.PropertyTableView;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.XpathViolationListCell;
-import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -79,8 +82,11 @@ import javafx.stage.StageStyle;
 
 
 /**
- * XPath panel controller. One such controller is a presenter for an {@link ObservableXPathRuleBuilder},
- * which stores all data about one currently edited rule.
+ * XPath panel controller. This object maintains an {@link ObservableRuleBuilder} which stores information
+ * about the currently edited rule. The properties of that builder are rewired to the export wizard's fields
+ * when it's open. The wizard is just one view on the builder's data, which is supposed to offer the most
+ * customization options. Other views can be implemented in a similar way, for example, PropertyView
+ * implements a view over the properties of the builder.
  *
  * @author Clément Fournier
  * @see ExportXPathWizardController
@@ -91,6 +97,7 @@ public class XPathPanelController extends AbstractController implements NodeSele
     private static final String NO_MATCH_MESSAGE = "No match in text";
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
     private final ObservableXPathRuleBuilder ruleBuilder = new ObservableXPathRuleBuilder();
+    private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
 
     @FXML
     public ToolbarTitledPane expressionTitledPane;
@@ -116,7 +123,7 @@ public class XPathPanelController extends AbstractController implements NodeSele
 
     public XPathPanelController(DesignerRoot designerRoot) {
         super(designerRoot);
-        getRuleBuilder().setClazz(XPathRule.class);
+        exportWizard = new SoftReferenceCache<>(() -> new ExportXPathWizardController(designerRoot));
     }
 
 
@@ -151,7 +158,10 @@ public class XPathPanelController extends AbstractController implements NodeSele
 
     @Override
     protected void afterParentInit() {
-        bindToParent();
+        bindBuilderToPanel();
+
+        rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
+        rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
 
         // init autocompletion only after binding to parent and settings restore
         // otherwise the popup is shown on startup
@@ -161,16 +171,15 @@ public class XPathPanelController extends AbstractController implements NodeSele
 
 
     // Binds the underlying rule parameters to the parent UI, disconnecting it from the wizard if need be
-    private void bindToParent() {
-        ReactfxUtil.rewire(getRuleBuilder().languageProperty(), Val.map(getGlobalState().globalLanguageVersionProperty(),
-                                                                        LanguageVersion::getLanguage));
+    private void bindBuilderToPanel() {
+        rewire(getRuleBuilder().languageProperty(), Val.map(getGlobalState().globalLanguageVersionProperty(),
+                                                            LanguageVersion::getLanguage));
 
-        ReactfxUtil.rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
-        ReactfxUtil.rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
-
-        ReactfxUtil.rewireInit(getRuleBuilder().rulePropertiesProperty(),
-                               propertyTableView.rulePropertiesProperty(), propertyTableView::setRuleProperties);
+        rewireInit(getRuleBuilder().rulePropertiesProperty(),
+                   propertyTableView.rulePropertiesProperty(),
+                   propertyTableView::setRuleProperties);
     }
+
 
     private void initialiseVersionSelection() {
         ToggleGroup xpathVersionToggleGroup = new ToggleGroup();
@@ -293,27 +302,21 @@ public class XPathPanelController extends AbstractController implements NodeSele
 
 
     public void showExportXPathToRuleWizard() {
-        ExportXPathWizardController wizard
-            = new ExportXPathWizardController(xpathExpressionProperty());
+        ExportXPathWizardController wizard = exportWizard.get();
+        wizard.showYourself(bindToExportWizard(wizard));
+    }
 
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("fxml/xpath-export-wizard.fxml"));
-        loader.setController(wizard);
 
-        final Stage dialog = new Stage();
-        dialog.initOwner(getDesignerRoot().getMainStage());
-        dialog.setOnCloseRequest(e -> wizard.shutdown());
-        dialog.initModality(Modality.WINDOW_MODAL);
+    /**
+     * Binds the properties of the panel to the export wizard.
+     *
+     * @param exportWizard The caller
+     */
+    private Subscription bindToExportWizard(ExportXPathWizardController exportWizard) {
 
-        Parent root;
-        try {
-            root = loader.load();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Scene scene = new Scene(root);
-        //stage.setTitle("PMD Rule Designer (v " + PMD.VERSION + ')');
-        dialog.setScene(scene);
-        dialog.show();
+        return exportWizard.bindToRuleBuilder(getRuleBuilder())
+                           .and(this::bindBuilderToPanel);
+
     }
 
     public Val<List<Node>> currentResultsProperty() {
