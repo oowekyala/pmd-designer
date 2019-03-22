@@ -52,18 +52,30 @@ public final class AstTraversalUtil {
             return Optional.empty();
         }
 
-        return AstTraversalUtil.getRoot(node) == myRoot
-               ? Optional.of(node) // same tree
-               : or(
-                   or(
-                       // first try with path
-                       findOldNodeInNewAst(node, myRoot),
-                       // then try with exact range
-                       () -> findNodeCovering(myRoot, rangeOf(node), true)
-                   ),
-                   // fallback on leaf if nothing works
-                   () -> findNodeAt(myRoot, caretPositionOrNull == null ? endPosition(node) : caretPositionOrNull)
-               );
+        if (node.getUserData() instanceof Node) {
+            return Optional.of((Node) node.getUserData());
+        }
+
+        Optional<Node> result = AstTraversalUtil.getRoot(node) == myRoot
+                                ? Optional.of(node) // same tree
+                                : or(
+                                    or(
+                                        // first try with path
+                                        findOldNodeInNewAst(node, myRoot),
+                                        // then try with exact range
+                                        () -> findNodeCovering(myRoot, rangeOf(node), true)
+                                    ),
+                                    // fallback on leaf if nothing works
+                                    () -> findNodeAt(myRoot, caretPositionOrNull == null ? endPosition(node)
+                                                                                         : caretPositionOrNull)
+                                );
+
+        // the [node] is mapped to the [result]
+        // since several nodes may map to the same node in another tree,
+        // it's not safe to set both cache entries
+        result.ifPresent(node::setUserData);
+
+        return result;
     }
 
 

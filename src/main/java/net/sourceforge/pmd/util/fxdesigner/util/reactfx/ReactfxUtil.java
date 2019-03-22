@@ -129,7 +129,7 @@ public final class ReactfxUtil {
                     }
                 }
                 pending.add(t);
-
+                source.push(t);
                 return pending;
             },
             duration
@@ -140,6 +140,6 @@ public final class ReactfxUtil {
                  }
              });
 
-        return source;
+        return source.distinct();
     }
 }

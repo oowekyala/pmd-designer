@@ -8,7 +8,6 @@ import java.util.function.Supplier;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
-import net.sourceforge.pmd.util.fxdesigner.app.MessageChannel.Message;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
@@ -143,19 +142,18 @@ public interface ApplicationComponent {
 
     /** Logs an exception that occurred somewhere in the app logic. */
     default void logInternalDebugInfo(Supplier<String> shortMessage, Supplier<String> details) {
+        logInternalDebugInfo(shortMessage, details, false);
+    }
+
+
+    /** Logs an exception that occurred somewhere in the app logic. */
+    default void logInternalDebugInfo(Supplier<String> shortMessage, Supplier<String> details, boolean trace) {
         if (isDeveloperMode()) {
             getLogger().logEvent(LogEntry.createInternalDebugEntry(shortMessage.get(),
                                                                    details.get(),
                                                                    this,
-                                                                   getLogCategory()));
-        }
-    }
-
-
-    /** Traces a message. */
-    default <T> void logMessageTrace(Message<T> event, Supplier<String> details) {
-        if (isDeveloperMode()) {
-            getLogger().logEvent(LogEntry.createDataEntry(event, event.getCategory(), details.get()));
+                                                                   getLogCategory(),
+                                                                   trace));
         }
     }
 

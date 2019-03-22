@@ -203,7 +203,7 @@ public final class EventLogController extends AbstractController {
         entry.setExamined(true);
 
         if (entry.getCategory().isUserException()) {
-            DesignerUtil.stackTraceToXPath(entry.getDetails())
+            DesignerUtil.stackTraceToXPath(entry.detailsProperty().getValue())
                         .map(xpath -> XPathEvaluator.simpleEvaluate(getDesignerRoot(), xpath))
                         .ifPresent(selectedErrorNodes::setValue);
         }
@@ -219,7 +219,7 @@ public final class EventLogController extends AbstractController {
 
 
     private void onExceptionSelectionChanges(LogEntry newVal) {
-        logDetailsTextArea.setText(newVal == null ? "" : newVal.getDetails());
+        logDetailsTextArea.setText(newVal == null ? "" : newVal.detailsProperty().getValue());
         handleSelectedEntry(newVal);
     }
 

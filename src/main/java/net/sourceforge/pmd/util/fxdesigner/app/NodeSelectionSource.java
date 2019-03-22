@@ -95,7 +95,7 @@ public interface NodeSelectionSource extends ApplicationComponent {
 
         @Override
         public String toString() {
-            return getClass().getName() + "(node=" + selected + ", options=" + options + ")";
+            return "{node=" + selected + ", options=" + options + "}";
         }
 
         public static NodeSelectionEvent of(Node selected) {

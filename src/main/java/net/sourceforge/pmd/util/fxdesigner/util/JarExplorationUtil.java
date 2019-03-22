@@ -45,7 +45,6 @@ public final class JarExplorationUtil {
 
     private static final Object FILE_SYSTEM_LOCK = new Object();
 
-
     private static final List<String> JAR_MIMES =
         Arrays.asList("application/x-java-archive", "application/java-archive");
 

@@ -6,6 +6,7 @@ package net.sourceforge.pmd.util.fxdesigner.app;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.reactfx.EventSource;
 import org.reactfx.EventStream;
@@ -13,6 +14,7 @@ import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.util.fxdesigner.MainDesignerController;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
@@ -62,7 +64,7 @@ public class MessageChannel<T> {
     public EventStream<T> messageStream(boolean alwaysHandle,
                                         ApplicationComponent component) {
         return ReactfxUtil.distinctBetween(channel, Duration.ofMillis(100))
-                          .hook(message -> component.logMessageTrace(message, () -> component.getDebugName() + " is handling message " + message))
+                          .hook(message -> logMessageTrace(component, message, () -> ""))
                           .filter(message -> alwaysHandle || !component.equals(message.getOrigin()))
                           .map(Message::getContent);
     }
@@ -81,6 +83,18 @@ public class MessageChannel<T> {
      */
     public void pushEvent(ApplicationComponent origin, T content) {
         channel.push(new Message<>(origin, logCategory, content));
+    }
+
+    /** Traces a message. */
+    private static <T> void logMessageTrace(ApplicationComponent component, Message<T> event, Supplier<String> details) {
+        if (component.isDeveloperMode()) {
+            LogEntry entry = LogEntry.createInternalDebugEntry(event.toString(),
+                                                               details.get(),
+                                                               component,
+                                                               event.getCategory(),
+                                                               true);
+            component.getLogger().logEvent(entry);
+        }
     }
 
 
