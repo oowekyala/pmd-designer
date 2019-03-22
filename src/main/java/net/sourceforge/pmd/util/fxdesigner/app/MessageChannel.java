@@ -48,6 +48,7 @@ public class MessageChannel<T> {
 
     MessageChannel(Category logCategory) {
         this.logCategory = logCategory;
+        latestMessage.pin();
     }
 
 

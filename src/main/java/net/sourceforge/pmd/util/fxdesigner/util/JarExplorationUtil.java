@@ -113,25 +113,36 @@ public final class JarExplorationUtil {
             path.getParent().toFile().mkdirs();
 
 
-            writeTasks.add(CompletableFuture.runAsync(() -> {
-                try {
-                    try (InputStream is = jar.getInputStream(file);
-                         FileOutputStream fos = new FileOutputStream(path.toFile())) {
+            writeTasks.add(
+                CompletableFuture
+                    .runAsync(() -> {
+                        try {
+                            try (InputStream is = jar.getInputStream(file);
+                                 FileOutputStream fos = new FileOutputStream(path.toFile())) {
 
-                        while (is.available() > 0) {  // write contents of 'is' to 'fos'
-                            fos.write(is.read());
+                                while (is.available() > 0) {  // write contents of 'is' to 'fos'
+                                    fos.write(is.read());
+                                }
+                            }
+                        } catch (IOException ioe) {
+                            ioe.printStackTrace();
                         }
-                    }
-                } catch (IOException ioe) {
-                    ioe.printStackTrace();
-                }
-            }).thenRunAsync(() -> additionalStages.accept(path)));
+                    })
+                    .thenRunAsync(() -> additionalStages.accept(path))
+                    .exceptionally(t -> {
+                        System.err.println("Failed on " + path);
+                        t.printStackTrace();
+                        return null;
+                    })
+            );
         }
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         Runnable countTask = () -> {
-            System.out.println(writeTasks.stream().filter(CompletableFuture::isDone).count());
+            int total = writeTasks.size();
+            int done = (int) writeTasks.stream().filter(CompletableFuture::isDone).count();
+            updateProgress(done, total);
         };
-        scheduler.scheduleAtFixedRate(countTask, 0, 1000, TimeUnit.MILLISECONDS);
+        scheduler.scheduleAtFixedRate(countTask, 0, 100, TimeUnit.MILLISECONDS);
 
         return writeTasks.stream()
                          .reduce((a, b) -> a.thenCombine(b, (c, d) -> null))
@@ -142,6 +153,7 @@ public final class JarExplorationUtil {
                                  // user tasks are done
                                  jar.close();
                                  scheduler.shutdown();
+                                 updateProgress(writeTasks.size(), writeTasks.size());
                              } catch (IOException e) {
                                  e.printStackTrace();
                              }
@@ -149,6 +161,23 @@ public final class JarExplorationUtil {
                          });
     }
 
+    private static void updateProgress(int done, int total) {
+        final int width = 30; // progress bar width in chars
+
+
+        StringBuilder builder = new StringBuilder("\r[");
+        int i = 0;
+        int progressWidth = (int) ((done * 1.0 / total) * width);
+        for (; i <= progressWidth; i++) {
+            builder.append(".");
+        }
+        for (; i < width; i++) {
+            builder.append(" ");
+        }
+        builder.append("] ").append(done).append("/").append(total).append(" ");
+
+        System.out.print(builder);
+    }
 
     /** Maps paths to classes. */
     private static Class<?> toClass(Path path, String packageName) {
