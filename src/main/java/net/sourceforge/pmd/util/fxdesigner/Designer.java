@@ -86,7 +86,7 @@ public class Designer extends Application {
         this.owner = owner;
 
         // TODO should display the 4 segment version number
-        stage.setTitle("PMD Rule Designer (v " + PMDVersion.VERSION + ')');
+        stage.setTitle("PMD Rule Designer (v " + Designer.VERSION + ')');
         setIcons(stage);
 
         Logger.getLogger(Attribute.class.getName()).setLevel(Level.OFF);

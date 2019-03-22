@@ -14,6 +14,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 
@@ -75,6 +76,14 @@ public interface ApplicationComponent {
 
 
     /**
+     * A default category for exceptions coming from this component.
+     */
+    default Category getLogCategory() {
+        return Category.INTERNAL;
+    }
+
+
+    /**
      * Gets the main stage of the application.
      */
     default Stage getMainStage() {
@@ -126,7 +135,9 @@ public interface ApplicationComponent {
     /** Logs an exception that occurred somewhere in the app logic. */
     default void logInternalException(Throwable throwable) {
         if (isDeveloperMode()) {
-            getLogger().logEvent(LogEntry.createInternalExceptionEntry(throwable));
+            System.err.println("Exception in " + this.getDebugName() + ": " + throwable.getMessage());
+            System.err.println("  See the event log for more info");
+            getLogger().logEvent(LogEntry.createUserExceptionEntry(throwable, getLogCategory()));
         }
     }
 

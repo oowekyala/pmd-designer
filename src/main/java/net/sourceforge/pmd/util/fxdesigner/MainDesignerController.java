@@ -24,11 +24,10 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.popups.EventLogController;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.popups.SimplePopups;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LimitedSizeStack;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
-import net.sourceforge.pmd.util.fxdesigner.util.StageBuilder;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
 import javafx.beans.NamedArg;
@@ -43,8 +42,6 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.StageStyle;
 
 
 /**
@@ -61,6 +58,8 @@ public class MainDesignerController extends AbstractController {
 
 
     /* Menu bar */
+    @FXML
+    private MenuItem aboutMenuItem;
     @FXML
     private MenuItem javadocMenuItem;
     @FXML
@@ -129,6 +128,7 @@ public class MainDesignerController extends AbstractController {
         javadocMenuItem.setOnAction(e -> nodeJavadocController.get().showYourself());
         saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
+        aboutMenuItem.setOnAction(e -> SimplePopups.showAboutPopup(getDesignerRoot()));
 
         setupAuxclasspathMenuItem.setOnAction(e -> sourceEditorController.showAuxclasspathSetupPopup());
 

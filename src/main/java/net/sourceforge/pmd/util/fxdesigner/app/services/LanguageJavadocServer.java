@@ -23,7 +23,7 @@ import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 
 /**
  * @author Clément Fournier
@@ -32,61 +32,24 @@ public class LanguageJavadocServer implements ApplicationComponent {
 
     private final Language language;
     private final DesignerRoot designerRoot;
-    private Path explodedJarDir;
+    private final ResourceManager resourceManager;
     private CompletableFuture<Boolean> isReady;
 
     public LanguageJavadocServer(Language language,
-                                 DesignerRoot designerRoot) {
+                                 DesignerRoot designerRoot,
+                                 Path javadocJar,
+                                 ResourceManager resourceManager) {
         this.language = language;
         this.designerRoot = designerRoot;
+        this.resourceManager = resourceManager;
 
-        isReady = CompletableFuture.supplyAsync(this::getJavadocJar)
-                                   .thenCompose(this::unpackFuture)
-                                   .thenRunAsync(this::stampCompletion)
-                                   .handle((nothing, error) -> true);
+        isReady = resourceManager.unpackJar(javadocJar,
+                                            LanguageJavadocServer::shouldExtract,
+                                            s -> s,
+                                            this::writeCompactJavadoc)
+                                 .handle((r, t) -> true);
 
 
-    }
-
-    private Path getJavadocJar() {
-
-        return JarExplorationUtil.pathsInResource(Thread.currentThread().getContextClassLoader(), "")
-                                 .filter(it -> {
-                                     String baseName = FilenameUtils.getName(it.toString());
-                                     return baseName.startsWith(
-                                         "pmd-" + language.getTerseName())
-                                         && baseName.endsWith("-javadoc.jar");
-                                 })
-                                 .findFirst()
-                                 .orElse(null);
-
-    }
-
-    private void stampCompletion() {
-        try {
-            // create a stamp to mark that the whole archive was unpacked
-            explodedJarDir.resolve("timestamp").toFile().createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        System.out.println("Done with " + explodedJarDir + "!");
-    }
-
-    private CompletableFuture<Void> unpackFuture(Path javadocJar) {
-        Path deployPath = getService(DesignerRoot.PERSISTENCE_MANAGER).getSettingsDirectory().resolve("javadocs");
-
-        // TODO checksum or what
-        explodedJarDir = deployPath.resolve(javadocJar.getFileName());
-
-        if (explodedJarDir.resolve("timestamp").toFile().exists()) {
-            // use existing cache
-            return CompletableFuture.completedFuture(null);
-        }
-
-        return JarExplorationUtil.unpackAsync(javadocJar,
-                                              explodedJarDir,
-                                              LanguageJavadocServer::shouldExtract,
-                                              LanguageJavadocServer::writeCompactJavadoc);
     }
 
     public Optional<URL> docUrl(Class<? extends Node> clazz, boolean compact) {
@@ -100,12 +63,12 @@ public class LanguageJavadocServer implements ApplicationComponent {
                 name = name + "-compact";
             }
 
-            File htmlFile = explodedJarDir.resolve(name + ".html").toFile();
+            File htmlFile = resourceManager.getRootManagedDir().resolve(name + ".html").toFile();
 
             try {
                 return htmlFile.exists() ? Optional.of(htmlFile.toURI().toURL()) : Optional.empty();
             } catch (MalformedURLException e) {
-                e.printStackTrace();
+                logInternalException(e);
                 return Optional.empty();
             }
         }
@@ -133,7 +96,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
             || "class-use".equals(Paths.get(ref).getParent().getFileName().toString());
     }
 
-    private static void writeCompactJavadoc(Path path) {
+    private void writeCompactJavadoc(Path path) {
 
         if (!isCompactable(path.toString())) {
             // not compactable
@@ -186,7 +149,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
                  new BufferedWriter(new FileWriter(path.getParent().resolve(compactedPath.get().getFileName().toString()).toFile()))) {
             html.html(writer);
         } catch (IOException e) {
-            e.printStackTrace();
+            logInternalException(e);
         }
     }
 
@@ -202,5 +165,20 @@ public class LanguageJavadocServer implements ApplicationComponent {
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
+    }
+
+    @Override
+    public String toString() {
+        return getDebugName();
+    }
+
+    @Override
+    public Category getLogCategory() {
+        return Category.JAVADOC_SERVER;
+    }
+
+    @Override
+    public String getDebugName() {
+        return "LanguageJavadocServer(" + language.getTerseName() + ")";
     }
 }

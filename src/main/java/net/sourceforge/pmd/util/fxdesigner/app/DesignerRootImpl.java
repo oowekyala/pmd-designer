@@ -19,6 +19,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.app.services.OnDiskPersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ResourceManager;
 
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -60,6 +61,7 @@ public final class DesignerRootImpl implements DesignerRoot {
                                                                   params.getPersistedOutputFile());
 
         registerService(PERSISTENCE_MANAGER, manager);
+        registerService(GLOBAL_RESOURCE_MANAGER, new ResourceManager(manager.getSettingsDirectory().resolve("unpacked"), this));
         registerService(JAVADOC_SERVER, new JavadocServer(this));
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
         registerService(APP_STATE_HOLDER, new GlobalStateHolderImpl());

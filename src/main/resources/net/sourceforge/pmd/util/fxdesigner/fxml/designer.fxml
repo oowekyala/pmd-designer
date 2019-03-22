@@ -55,6 +55,7 @@
                                         <!-- TODO add link to doc pages -->
                                         <!--<MenuItem mnemonicParsing="false" text="About" />-->
                                         <MenuItem fx:id="licenseMenuItem" text="_License" />
+                                        <MenuItem fx:id="aboutMenuItem" text="_About"/>
                                     </items>
                                 </Menu>
 

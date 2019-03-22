@@ -10,6 +10,8 @@ import java.util.Objects;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
+
 
 /**
  * Log entry of an {@link EventLoggerImpl}.
@@ -89,11 +91,6 @@ public class LogEntry implements Comparable<LogEntry> {
     }
 
 
-    public static LogEntry createInternalExceptionEntry(Throwable thrown) {
-        return createUserExceptionEntry(thrown, Category.INTERNAL);
-    }
-
-
     public static LogEntry createInternalDebugEntry(String shortMessage, String details) {
         return new LogEntry(details, shortMessage, Category.INTERNAL);
     }
@@ -105,6 +102,11 @@ public class LogEntry implements Comparable<LogEntry> {
 
     public static <T> LogEntry serviceRegistered(AppServiceDescriptor<T> descriptor, T service) {
         return new LogEntry(service.toString(), descriptor.toString(), Category.SERVICE_REGISTERING);
+    }
+
+    public static LogEntry javadocServiceEntry(ApplicationComponent component, String shortMessage, boolean trace) {
+        return new LogEntry(shortMessage, "in " + component.getDebugName(),
+                            trace ? Category.JAVADOC_TRACE : Category.JAVADOC_SERVER);
     }
 
     public enum Category {
@@ -126,6 +128,8 @@ public class LogEntry implements Comparable<LogEntry> {
         // only relevant to a developer of the app.
         INTERNAL("Internal event", CategoryType.INTERNAL),
         SERVICE_REGISTERING("Service registered", CategoryType.INTERNAL),
+        JAVADOC_SERVER("Javadoc loading", CategoryType.INTERNAL),
+        JAVADOC_TRACE("Javadoc loading trace", CategoryType.TRACE),
         SELECTION_EVENT_TRACING("Selection event tracing", CategoryType.TRACE);
 
         public final String name;
