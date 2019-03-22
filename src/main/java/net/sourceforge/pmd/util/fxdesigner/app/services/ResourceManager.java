@@ -3,8 +3,6 @@ package net.sourceforge.pmd.util.fxdesigner.app.services;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -13,7 +11,6 @@ import java.util.function.Predicate;
 
 import org.apache.commons.io.FilenameUtils;
 
-import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
@@ -26,10 +23,9 @@ import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
 public class ResourceManager implements ApplicationComponent {
 
     // bump to invalidate cache
-    private static final String TIMESTAMP_VERSION = "timestamp-1";
+    private static final String TIMESTAMP_VERSION = "timestamp-2";
 
     private final DesignerRoot designerRoot;
-    private final Map<Language, LanguageJavadocServer> BY_LANG = new HashMap<>();
 
     private final Path resourcesUnixPath;
 
@@ -46,14 +42,23 @@ public class ResourceManager implements ApplicationComponent {
     }
 
     public CompletableFuture<ResourceManager> unpackJar(Path jarFile,
+                                                        Path jarRelativePath,
+                                                        int maxDepth,
                                                         Predicate<Path> shouldUnpack,
                                                         Function<String, String> finalRename) {
-        return unpackJar(jarFile, shouldUnpack, finalRename, p -> {});
+        return unpackJar(jarFile,
+                         jarRelativePath,
+                         maxDepth,
+                         shouldUnpack,
+                         finalRename,
+                         p -> {});
     }
 
     /**
      * Unpacks a jar if not already unpacked.
      *
+     * @param jarRelativePath  Directory in which to start unpacking. The root is "/"
+     * @param maxDepth         Max depth on which to recurse
      * @param jarFile        Jar to unpack
      * @param shouldUnpack   Files to unpack in the jar
      * @param finalRename    File rename
@@ -62,10 +67,14 @@ public class ResourceManager implements ApplicationComponent {
      * @return A future that completes when the jar has been closed
      */
     public CompletableFuture<ResourceManager> unpackJar(Path jarFile,
+                                                        Path jarRelativePath,
+                                                        int maxDepth,
                                                         Predicate<Path> shouldUnpack,
                                                         Function<String, String> finalRename,
                                                         Consumer<Path> postProcessing) {
         return JarExplorationUtil.unpackAsync(jarFile,
+                                              jarRelativePath,
+                                              maxDepth,
                                               resourcesUnixPath,
                                               shouldUnpack.and(path -> !isUnpacked(JarExplorationUtil.getJarRelativePath(path.toUri()))),
                                               unpacked -> {
@@ -78,7 +87,6 @@ public class ResourceManager implements ApplicationComponent {
                                                       logInternalException(e);
                                                   }
                                                   postProcessing.accept(finalFile.toPath());
-                                                  System.out.println("extracted " + unpacked + " => " + finalFile);
                                               },
                                               (f, e) -> logInternalException(e))
                                  .handle((nothing, t) -> {

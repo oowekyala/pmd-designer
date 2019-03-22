@@ -1,12 +1,12 @@
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -33,12 +33,16 @@ public class JavadocServer implements ApplicationComponent {
         this.designerRoot = designerRoot;
 
         getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER)
-            .unpackJar(JarExplorationUtil.thisJarPathInHost(), this::shouldUnpack, this::nameCleanup)
+            .unpackJar(JarExplorationUtil.thisJarPathInHost(),
+                       Paths.get(""),
+                       1,
+                       this::shouldUnpack,
+                       this::nameCleanup)
             .thenAccept(
                 manager ->
                     LanguageRegistryUtil.getSupportedLanguages()
-                                        .collect(Collectors.toMap(l -> l, l -> nameForLanguage(l.getTerseName())))
-                                        .forEach((lang, jarName) -> buildLanguageServer(designerRoot, manager, lang, jarName)));
+                                        .forEach(lang -> buildLanguageServer(designerRoot, manager, lang,
+                                                                             nameForLanguage(lang.getTerseName()))));
 
     }
 

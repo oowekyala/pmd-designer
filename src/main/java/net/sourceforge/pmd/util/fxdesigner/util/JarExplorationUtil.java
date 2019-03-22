@@ -5,9 +5,7 @@
 package net.sourceforge.pmd.util.fxdesigner.util;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -17,6 +15,7 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -34,8 +33,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -66,13 +63,7 @@ public final class JarExplorationUtil {
             e.printStackTrace();
             return null;
         }
-        return FileSystems.getDefault().getPath(vdirPath.substring("file:".length(), vdirPath.indexOf('!')));
-    }
-
-    public static Stream<Path> pathsInRootJarDirectory() {
-
-        return pathsInResource(Thread.currentThread().getContextClassLoader(), "");
-
+        return FileSystems.getDefault().getPath(vdirPath.substring("file:".length(), vdirPath.indexOf('!'))).toAbsolutePath();
     }
 
     /** Finds the classes in the given package by looking in the classpath directories. */
@@ -160,58 +151,69 @@ public final class JarExplorationUtil {
         }
     }
 
+    /**
+     * Unpacks a [jarFile] to the given [destDir]. Only those entries matching the
+     * [unpackFilter] will be unpacked.
+     *
+     * @param jarRelativePath  Directory in which to start unpacking. The root is "/"
+     * @param maxDepth         Max depth on which to recurse
+     * @param unpackFilter     Filters those files that will be expanded
+     * @param postProcessing   Called for each expanded entry with the path of the
+     *                         extracted file
+     * @param exceptionHandler Handles exceptions
+     *
+     * @return A future that is done when all the jar has been processed.
+     */
     public static CompletableFuture<Void> unpackAsync(Path jarFile,
+                                                      Path jarRelativePath,
+                                                      int maxDepth,
                                                       Path destDir,
                                                       Predicate<Path> unpackFilter,
-                                                      Consumer<Path> additionalStages,
+                                                      Consumer<Path> postProcessing,
                                                       BiConsumer<Path, Throwable> exceptionHandler) {
-        JarFile prejar;
-        try {
-            prejar = new JarFile(jarFile.toFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return CompletableFuture.completedFuture(null);
-        }
-        final JarFile jar = prejar;
-        Enumeration enumEntries = jar.entries();
 
         List<CompletableFuture<Void>> writeTasks = new ArrayList<>();
-
-        while (enumEntries.hasMoreElements()) {
-            JarEntry file = (JarEntry) enumEntries.nextElement();
-
-            Path path = destDir.resolve(file.getName());
-
-            if (file.isDirectory() || !unpackFilter.test(path)) {
-                // if its a directory, it will be created anyway
-                continue;
+        FileSystem fs;
+        try {
+            URI uri = jarFile.toUri();
+            if (!"jar".equals(uri.getScheme())) {
+                if (uri.getScheme() == null) {
+                    uri = new URI("jar:file://" + uri.toString());
+                } else {
+                    uri = new URI("jar:" + uri.toString());
+                }
             }
+            fs = getFileSystem(uri);
+            Files.walk(fs.getPath(jarRelativePath.toString()), maxDepth)
+                 .filter(filePath -> !Files.isDirectory(filePath))
+                 .filter(unpackFilter)
+                 .forEach(filePath -> {
+                     Path relativePathInZip = fs.getPath("/").relativize(filePath);
+                     Path targetPath = destDir.resolve(relativePathInZip.toString()).toAbsolutePath();
 
-            path.getParent().toFile().mkdirs();
-
-
-            writeTasks.add(
-                CompletableFuture
-                    .runAsync(() -> {
-                        try {
-                            try (InputStream is = jar.getInputStream(file);
-                                 FileOutputStream fos = new FileOutputStream(path.toFile())) {
-
-                                while (is.available() > 0) {  // write contents of 'is' to 'fos'
-                                    fos.write(is.read());
-                                }
-                            }
-                        } catch (IOException ioe) {
-                            ioe.printStackTrace();
-                        }
-                    })
-                    .thenRunAsync(() -> additionalStages.accept(path))
-                    .exceptionally(t -> {
-                        exceptionHandler.accept(path, t);
-                        return null;
-                    })
-            );
+                     writeTasks.add(
+                         CompletableFuture
+                             .runAsync(() -> {
+                                 try {
+                                     Files.createDirectories(targetPath.getParent());
+                                     // And extract the file
+                                     Files.copy(filePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                                 } catch (IOException e) {
+                                     exceptionHandler.accept(filePath, e);
+                                 }
+                             })
+                             .thenRunAsync(() -> postProcessing.accept(targetPath))
+                             .exceptionally(t -> {
+                                 exceptionHandler.accept(filePath, t);
+                                 return null;
+                             })
+                     );
+                 });
+        } catch (IOException | URISyntaxException e) {
+            exceptionHandler.accept(null, e);
+            return CompletableFuture.completedFuture(null);
         }
+
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
         Runnable countTask = () -> {
             int total = writeTasks.size();
@@ -227,7 +229,7 @@ public final class JarExplorationUtil {
                              try {
                                  // todo should close when the files are extracted, not when the
                                  // user tasks are done
-                                 jar.close();
+                                 fs.close();
                                  scheduler.shutdown();
                                  updateProgress(writeTasks.size(), writeTasks.size());
                              } catch (IOException e) {

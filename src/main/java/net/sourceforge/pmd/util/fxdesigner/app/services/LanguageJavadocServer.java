@@ -44,6 +44,8 @@ public class LanguageJavadocServer implements ApplicationComponent {
         this.resourceManager = resourceManager;
 
         isReady = resourceManager.unpackJar(javadocJar,
+                                            Paths.get("/"),
+                                            Integer.MAX_VALUE,
                                             LanguageJavadocServer::shouldExtract,
                                             s -> s,
                                             this::writeCompactJavadoc)
