@@ -6,6 +6,7 @@ package net.sourceforge.pmd.util.fxdesigner;
 
 import java.util.Optional;
 
+import org.jsoup.Jsoup;
 import org.reactfx.EventStreams;
 import org.reactfx.value.Val;
 import org.w3c.dom.Document;
@@ -16,15 +17,10 @@ import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.StageBuilder;
 
 import javafx.concurrent.Worker.State;
 import javafx.fxml.FXML;
 import javafx.scene.web.WebView;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 
 /**
  * The javadoc pane.
@@ -33,45 +29,41 @@ import javafx.stage.StageStyle;
  */
 public class NodeJavadocController extends AbstractController implements NodeSelectionSource {
 
-    private final Stage myStage;
     @FXML
     private WebView webView;
 
     protected NodeJavadocController(DesignerRoot root) {
         super(root);
-
-        myStage = new StageBuilder().withOwner(getMainStage())
-                                    .withModality(Modality.NONE)
-                                    .withStyle(StageStyle.DECORATED)
-                                    .withFxml(DesignerUtil.getFxml("node-javadoc.fxml"), this)
-                                    .withTitle("Node Javadoc")
-                                    .newStage();
+// popup
+//        new StageBuilder().withOwner(getMainStage())
+//                                    .withModality(Modality.NONE)
+//                                    .withStyle(StageStyle.DECORATED)
+//                                    .withFxml(DesignerUtil.getFxml("node-javadoc.fxml"), this)
+//                                    .withTitle("Node Javadoc")
+//                                    .newStage();
     }
 
     @Override
     protected void beforeParentInit() {
-        webView.getEngine().loadContent("<html> <body>Nothing to display</body></html>"); // empty
+        webView.getEngine().loadContent(noSelectionHtml()); // empty
         webView.getEngine().setOnAlert(str -> System.out.println(str.getData()));
         webView.getEngine().setOnError(str -> str.getException().printStackTrace());
         initNodeSelectionHandling(getDesignerRoot(), EventStreams.never(), false);
     }
 
-    public void showYourself() {
-        myStage.show();
-        getDesignerRoot().getService(DesignerRoot.NODE_SELECTION_CHANNEL)
-                         .latestMessage()
-                         .getOpt()
-                         .ifPresent(nse -> setFocusNode(nse.selected, nse.options));
-
+    private String noSelectionHtml() {
+        return Jsoup.parse("<html> </html>")
+                    .body()
+                    .text("Select a node to display its Javadoc")
+                    .ownerDocument()
+                    .wholeText();
     }
 
     @Override
     public void setFocusNode(Node node, DataHolder options) {
-        if (!myStage.isShowing()) {
-            return;
-        }
+
         if (node == null) {
-            webView.getEngine().loadContent("<html> <body>Nothing to display</body></html>"); // empty
+            webView.getEngine().loadContent(noSelectionHtml()); // empty
             return;
         }
 

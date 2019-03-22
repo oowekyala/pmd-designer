@@ -43,10 +43,10 @@
                                                 <!--<FontIcon iconLiteral="fab-java"/>-->
                                             </graphic>
                                         </MenuItem>
-                                        <MenuItem fx:id="javadocMenuItem" text="_Javadoc">
-                                            <graphic>
-                                            </graphic>
-                                        </MenuItem>
+                                        <!--<MenuItem fx:id="javadocMenuItem" text="_Javadoc">-->
+                                            <!--<graphic>-->
+                                            <!--</graphic>-->
+                                        <!--</MenuItem>-->
                                     </items>
                                 </Menu>
 
@@ -82,6 +82,9 @@
                                         </Tab>
                                         <Tab text="Scopes">
                                             <fx:include source="scopes-panel.fxml" fx:id="scopesPanel"/>
+                                        </Tab>
+                                        <Tab text="Javadoc">
+                                            <fx:include source="node-javadoc.fxml" fx:id="nodeJavadoc"/>
                                         </Tab>
                                     </tabs>
                                 </TabPane>

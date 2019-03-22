@@ -60,8 +60,8 @@ public class MainDesignerController extends AbstractController {
     /* Menu bar */
     @FXML
     private MenuItem aboutMenuItem;
-    @FXML
-    private MenuItem javadocMenuItem;
+//    @FXML
+//    private MenuItem javadocMenuItem;
     @FXML
     private MenuItem setupAuxclasspathMenuItem;
     @FXML
@@ -99,12 +99,12 @@ public class MainDesignerController extends AbstractController {
     private MetricPaneController metricPaneController;
     @FXML
     private ScopesPanelController scopesPanelController;
+    @FXML
+    private NodeJavadocController nodeJavadocController;
 
 
     // we cache it but if it's not used the FXML is not created, etc
     private final SoftReferenceCache<EventLogController> eventLogController;
-    private final SoftReferenceCache<NodeJavadocController> nodeJavadocController;
-
     // Other fields
     private final Stack<File> recentFiles = new LimitedSizeStack<>(5);
 
@@ -112,7 +112,6 @@ public class MainDesignerController extends AbstractController {
     public MainDesignerController(@NamedArg("designerRoot") DesignerRoot designerRoot) {
         super(designerRoot);
         eventLogController = new SoftReferenceCache<>(() -> new EventLogController(designerRoot));
-        nodeJavadocController = new SoftReferenceCache<>(() -> new NodeJavadocController(designerRoot));
     }
 
 
@@ -125,7 +124,7 @@ public class MainDesignerController extends AbstractController {
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
-        javadocMenuItem.setOnAction(e -> nodeJavadocController.get().showYourself());
+//        javadocMenuItem.setOnAction(e -> nodeJavadocController.get().showYourself());
         saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
         aboutMenuItem.setOnAction(e -> SimplePopups.showAboutPopup(getDesignerRoot()));
@@ -268,6 +267,7 @@ public class MainDesignerController extends AbstractController {
                              sourceEditorController,
                              nodeDetailsTabController,
                              metricPaneController,
+                             nodeJavadocController,
                              scopesPanelController);
     }
 
