@@ -78,9 +78,7 @@ public final class LanguageRegistryUtil {
     }
 
     public static Stream<Language> getSupportedLanguages() {
-        return getSupportedLanguageVersions().stream()
-                                             .map(LanguageVersion::getLanguage)
-                                             .distinct();
+        return getSupportedLanguageVersions().stream().map(LanguageVersion::getLanguage).distinct();
     }
 
     public static Language findLanguageByShortName(String shortName) {

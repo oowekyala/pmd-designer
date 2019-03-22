@@ -53,6 +53,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
                                             s -> s,
                                             this::postProcess)
                                  .handle((r, t) -> {
+                                     logInternalDebugInfo(() -> "Done loading javadoc", () -> "");
                                      // finalize the resource manager
                                      r.markUptodate();
                                      return true;

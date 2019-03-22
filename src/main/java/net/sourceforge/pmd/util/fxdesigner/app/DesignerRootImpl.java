@@ -61,7 +61,8 @@ public final class DesignerRootImpl implements DesignerRoot {
                                                                   params.getPersistedOutputFile());
 
         registerService(PERSISTENCE_MANAGER, manager);
-        registerService(GLOBAL_RESOURCE_MANAGER, new ResourceManager(manager.getSettingsDirectory().resolve("unpacked"), this));
+        registerService(GLOBAL_RESOURCE_MANAGER,
+                        new ResourceManager(manager.getSettingsDirectory().resolve("resources"), this));
         registerService(JAVADOC_SERVER, new JavadocServer(this));
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
         registerService(APP_STATE_HOLDER, new GlobalStateHolderImpl());

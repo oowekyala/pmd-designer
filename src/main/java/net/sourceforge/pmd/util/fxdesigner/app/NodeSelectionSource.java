@@ -6,8 +6,6 @@ package net.sourceforge.pmd.util.fxdesigner.app;
 
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.printShortStackTrace;
 
-import java.lang.reflect.InvocationTargetException;
-
 import org.reactfx.EventStream;
 import org.reactfx.value.Val;
 

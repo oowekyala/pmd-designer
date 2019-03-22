@@ -14,7 +14,6 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 
@@ -145,7 +144,10 @@ public interface ApplicationComponent {
     /** Logs an exception that occurred somewhere in the app logic. */
     default void logInternalDebugInfo(Supplier<String> shortMessage, Supplier<String> details) {
         if (isDeveloperMode()) {
-            getLogger().logEvent(LogEntry.createInternalDebugEntry(shortMessage.get(), details.get()));
+            getLogger().logEvent(LogEntry.createInternalDebugEntry(shortMessage.get(),
+                                                                   details.get(),
+                                                                   this,
+                                                                   getLogCategory()));
         }
     }
 

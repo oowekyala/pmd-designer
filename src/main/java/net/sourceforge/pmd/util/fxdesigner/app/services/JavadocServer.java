@@ -34,7 +34,7 @@ public class JavadocServer implements ApplicationComponent {
 
         getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER)
             .unpackJar(JarExplorationUtil.thisJarPathInHost(),
-                       Paths.get(""),
+                       Paths.get("/"),
                        1,
                        this::shouldUnpack,
                        this::nameCleanup)
@@ -50,7 +50,7 @@ public class JavadocServer implements ApplicationComponent {
         resourceManager.getUnpackedFile(jarName)
                        .ifPresent(jar -> {
                            ResourceManager subResourceManager =
-                               new ResourceManager(resourceManager.subdir(jarName + "-exploded"), designerRoot);
+                               resourceManager.createSubordinate(jarName + "-exploded");
 
                            LanguageJavadocServer server =
                                new LanguageJavadocServer(lang, designerRoot, jar, subResourceManager);

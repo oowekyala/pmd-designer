@@ -18,6 +18,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
 
 /**
@@ -28,7 +29,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
 public class ResourceManager implements ApplicationComponent {
 
     // bump to invalidate cache
-    private static final String TIMESTAMP_VERSION = "8";
+    private static final String TIMESTAMP_VERSION = "10";
     private static final String TIMESTAMP = "-timestamp-";
 
     private final DesignerRoot designerRoot;
@@ -85,15 +86,15 @@ public class ResourceManager implements ApplicationComponent {
     /**
      * Unpacks a jar if not already unpacked.
      *
-     * @param jarRelativePath  Directory in which to start unpacking. The root is "/"
-     * @param maxDepth         Max depth on which to recurse
-     * @param jarFile        Jar to unpack
-     * @param shouldUnpack   Files to unpack in the jar
-     * @param finalRename    File rename
-     * @param postProcessing Actions to run on the final file
+     * @param jarRelativePath Directory in which to start unpacking. The root is "/"
+     * @param maxDepth        Max depth on which to recurse
+     * @param jarFile         Jar to unpack
+     * @param shouldUnpack    Files to unpack in the jar
+     * @param finalRename     File rename
+     * @param postProcessing  Actions to run on the final file
      *
      * @return A future that completes when the jar has been closed,
-     * with this resource manager as value
+     *     with this resource manager as value
      */
     public CompletableFuture<ResourceManager> unpackJar(Path jarFile,
                                                         Path jarRelativePath,
@@ -102,8 +103,13 @@ public class ResourceManager implements ApplicationComponent {
                                                         Function<String, String> finalRename,
                                                         Consumer<Path> postProcessing) {
         if (thisTimeStamp().exists()) {
+            logInternalDebugInfo(() -> "Everything up to date", () -> "");
+            getLogger().logEvent(LogEntry.javadocServiceEntry(this, "", false));
             return CompletableFuture.completedFuture(this);
         }
+
+        logInternalDebugInfo(() -> "Unpacking jar...", jarFile::toString);
+
 
         return JarExplorationUtil.unpackAsync(jarFile,
                                               jarRelativePath,
@@ -112,7 +118,9 @@ public class ResourceManager implements ApplicationComponent {
                                               shouldUnpack.and(path -> !isUnpacked(JarExplorationUtil.getJarRelativePath(path.toUri()))),
                                               unpacked -> {
                                                   File finalFile =
-                                                      unpacked.getParent().resolve(finalRename.apply(FilenameUtils.getName(unpacked.toString()))).toFile();
+                                                      unpacked.getParent()
+                                                              .resolve(finalRename.apply(FilenameUtils.getName(unpacked.toString())))
+                                                              .toFile();
                                                   unpacked.toFile().renameTo(finalFile);
                                                   try {
                                                       // stamp the file
@@ -142,6 +150,7 @@ public class ResourceManager implements ApplicationComponent {
         try {
             // stamp the file
             thisTimeStamp().createNewFile();
+            logInternalDebugInfo(() -> "Locking down on version " + TIMESTAMP_VERSION, () -> "");
         } catch (IOException e) {
             logInternalException(e);
         }
@@ -162,9 +171,10 @@ public class ResourceManager implements ApplicationComponent {
         return relative.getParent().resolve(relative.getFileName() + TIMESTAMP + TIMESTAMP_VERSION);
     }
 
-    public Path subdir(String relativePath) {
-        return resourcesUnixPath.resolve(relativePath);
+    public ResourceManager createSubordinate(String relativePath) {
+        return new ResourceManager(resourcesUnixPath.resolve(relativePath), getDesignerRoot());
     }
+
 
     private boolean isUnpacked(String jarRelativePath) {
         return timestampFor(jarRelativePath).toFile().exists();
@@ -174,6 +184,22 @@ public class ResourceManager implements ApplicationComponent {
         return isUnpacked(jarRelativePath) ? Optional.of(resourcesUnixPath.resolve(jarRelativePath)) : Optional.empty();
     }
 
+    @Override
+    public Category getLogCategory() {
+        return Category.RESOURCE_MANAGEMENT;
+    }
+
+    @Override
+    public String getDebugName() {
+        return "ResourceManager("
+            + getService(DesignerRoot.PERSISTENCE_MANAGER).getSettingsDirectory().relativize(getRootManagedDir())
+            + ")";
+    }
+
+    @Override
+    public String toString() {
+        return getDebugName();
+    }
 
     @Override
     public DesignerRoot getDesignerRoot() {

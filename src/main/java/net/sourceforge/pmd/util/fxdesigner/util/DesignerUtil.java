@@ -15,19 +15,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.logging.LogManager;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.reactfx.Subscription;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.lang.ast.xpath.Attribute;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
@@ -269,6 +270,36 @@ public final class DesignerUtil {
                 throw new RuntimeException(exc); // fatal, just bail...
             }
         };
+    }
+
+
+    public static Subscription updateProgressOnConsole(Supplier<Double> progressGetter) {
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        scheduler.scheduleAtFixedRate(() -> updateProgress(progressGetter.get()), 0, 100, TimeUnit.MILLISECONDS);
+
+        return () -> {
+            scheduler.shutdown();
+            updateProgress(1.0);
+            System.out.println("\r"); // delete
+        };
+    }
+
+    private static void updateProgress(double progress) {
+        final int width = 30; // progress bar width in chars
+
+
+        StringBuilder builder = new StringBuilder("\r[");
+        int i = 0;
+        int progressWidth = (int) (progress * width);
+        for (; i <= progressWidth; i++) {
+            builder.append(".");
+        }
+        for (; i < width; i++) {
+            builder.append(" ");
+        }
+        builder.append("] ").append(progress * 100).append("%").append(" ");
+
+        System.out.print(builder);
     }
 
     /**
