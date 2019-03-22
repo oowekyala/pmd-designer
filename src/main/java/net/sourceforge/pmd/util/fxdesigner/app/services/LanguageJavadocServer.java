@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
 import org.jsoup.Jsoup;
@@ -35,6 +36,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
     private final DesignerRoot designerRoot;
     private final ResourceManager resourceManager;
     private CompletableFuture<Boolean> isReady;
+    private static final Pattern EXCLUDED_FILES = Pattern.compile(".*?lang/\\w+/rule/.*|.*-.*.html");
 
     public LanguageJavadocServer(Language language,
                                  DesignerRoot designerRoot,
@@ -81,28 +83,6 @@ public class LanguageJavadocServer implements ApplicationComponent {
         }
     }
 
-    private static boolean shouldExtract(Path path) {
-        return !path.toString().matches(".*?lang/\\w+/rule/.*");
-    }
-
-    private static Optional<Path> compactedPath(String ref, boolean absolute) {
-        if (!isCompactable(ref)) {
-            return Optional.empty();
-        } else {
-            String compactName = FilenameUtils.getPath(ref) + FilenameUtils.getBaseName(ref) + "-compact.html";
-
-            Path result = absolute ? FileSystems.getDefault().getPath("").resolve(compactName) : Paths.get(compactName);
-            return Optional.ofNullable(result);
-        }
-    }
-
-    private static boolean isCompactable(String ref) {
-        return !ref.contains("#")
-            && FilenameUtils.getExtension(ref).equals("html")
-            && Character.isUpperCase(FilenameUtils.getBaseName(ref).charAt(0))
-            || "class-use".equals(Paths.get(ref).getParent().getFileName().toString());
-    }
-
     private void postProcess(Path path) {
 
         if (!isCompactable(path.toString())) {
@@ -112,11 +92,14 @@ public class LanguageJavadocServer implements ApplicationComponent {
         Document html;
         try {
             html = Jsoup.parse(path.toFile(), "UTF-8");
+            // delete old file
             path.toFile().delete();
         } catch (IOException e) {
             e.printStackTrace();
             return;
         }
+
+        // cleanup file
 
         html.selectFirst("header").remove();
         html.selectFirst("footer").remove();
@@ -167,6 +150,28 @@ public class LanguageJavadocServer implements ApplicationComponent {
         } catch (IOException e) {
             logInternalException(e);
         }
+    }
+
+    private static Optional<Path> compactedPath(String ref, boolean absolute) {
+        if (!isCompactable(ref)) {
+            return Optional.empty();
+        } else {
+            String compactName = FilenameUtils.getPath(ref) + FilenameUtils.getBaseName(ref) + "-compact.html";
+
+            Path result = absolute ? FileSystems.getDefault().getPath("").resolve(compactName) : Paths.get(compactName);
+            return Optional.ofNullable(result);
+        }
+    }
+
+    private static boolean isCompactable(String ref) {
+        return !ref.contains("#")
+            && FilenameUtils.getExtension(ref).equals("html")
+            && Character.isUpperCase(FilenameUtils.getBaseName(ref).charAt(0))
+            || "class-use".equals(Paths.get(ref).getParent().getFileName().toString());
+    }
+
+    private static boolean shouldExtract(Path path) {
+        return !EXCLUDED_FILES.matcher(path.toString()).matches();
     }
 
 

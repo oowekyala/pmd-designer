@@ -28,7 +28,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
 public class ResourceManager implements ApplicationComponent {
 
     // bump to invalidate cache
-    private static final String TIMESTAMP_VERSION = "7";
+    private static final String TIMESTAMP_VERSION = "8";
     private static final String TIMESTAMP = "-timestamp-";
 
     private final DesignerRoot designerRoot;
