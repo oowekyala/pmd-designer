@@ -8,8 +8,6 @@ import java.util.Optional;
 
 import org.jsoup.Jsoup;
 import org.reactfx.EventStreams;
-import org.reactfx.value.Val;
-import org.w3c.dom.Document;
 
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
@@ -18,7 +16,6 @@ import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 
-import javafx.concurrent.Worker.State;
 import javafx.fxml.FXML;
 import javafx.scene.web.WebView;
 
@@ -72,18 +69,7 @@ public class NodeJavadocController extends AbstractController implements NodeSel
                 .flatMap(l -> getService(DesignerRoot.JAVADOC_SERVER).forLanguage(l))
                 .flatMap(server -> server.docUrl(node.getClass(), true))
                 .filter(url -> !url.toString().equals(webView.getEngine().getLocation()))
-                .ifPresent(url -> {
-                    webView.getEngine().load(url.toString());
-                    Val.wrap(webView.getEngine().getLoadWorker().stateProperty())
-                       .values()
-                       .filter(it -> it == State.SUCCEEDED)
-                       .subscribeForOne(state -> {
-                           Document document = webView.getEngine().getDocument();
-                           org.w3c.dom.Node header = document.getElementsByTagName("header").item(0);
-                           if (header != null)
-                           header.getParentNode().removeChild(header);
-                       });
-                });
+                .ifPresent(url -> webView.getEngine().load(url.toString()));
     }
 
 }

@@ -30,6 +30,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
  */
 public class LanguageJavadocServer implements ApplicationComponent {
 
+    private static final String RELATIVE_LINK_SELECTOR = "a[href~=(?i)\\.\\..*]";
     private final Language language;
     private final DesignerRoot designerRoot;
     private final ResourceManager resourceManager;
@@ -48,8 +49,12 @@ public class LanguageJavadocServer implements ApplicationComponent {
                                             Integer.MAX_VALUE,
                                             LanguageJavadocServer::shouldExtract,
                                             s -> s,
-                                            this::writeCompactJavadoc)
-                                 .handle((r, t) -> true);
+                                            this::postProcess)
+                                 .handle((r, t) -> {
+                                     // finalize the resource manager
+                                     r.markUptodate();
+                                     return true;
+                                 });
 
 
     }
@@ -98,7 +103,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
             || "class-use".equals(Paths.get(ref).getParent().getFileName().toString());
     }
 
-    private void writeCompactJavadoc(Path path) {
+    private void postProcess(Path path) {
 
         if (!isCompactable(path.toString())) {
             // not compactable
@@ -107,10 +112,12 @@ public class LanguageJavadocServer implements ApplicationComponent {
         Document html;
         try {
             html = Jsoup.parse(path.toFile(), "UTF-8");
+            path.toFile().delete();
         } catch (IOException e) {
             e.printStackTrace();
             return;
         }
+
         html.selectFirst("header").remove();
         html.selectFirst("footer").remove();
         html.selectFirst("div.header h2").remove();
@@ -119,8 +126,10 @@ public class LanguageJavadocServer implements ApplicationComponent {
         html.select("dl").remove(); // remove stuff like inheritance hierarchy
         html.select("hr").remove();
         html.select("ul.inheritance").remove();
+
+
         // looks like a relative link
-        Elements relativeLinks = html.select("a[href~=(?i)\\.\\..*]");
+        Elements relativeLinks = html.select(RELATIVE_LINK_SELECTOR);
         // replace links to this doc with links to the compact versions
         for (Element link : relativeLinks) {
             String href = link.attr("href");
@@ -131,6 +140,11 @@ public class LanguageJavadocServer implements ApplicationComponent {
                 link.unwrap();
             }
         }
+
+        // external links
+        html.select("a[href]").not(RELATIVE_LINK_SELECTOR)
+            .forEach(org.jsoup.nodes.Node::unwrap);
+
 
         html.head()
             .appendElement("style")
