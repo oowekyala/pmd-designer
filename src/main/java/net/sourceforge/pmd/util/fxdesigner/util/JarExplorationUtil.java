@@ -26,7 +26,12 @@ import java.util.Optional;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Collectors;
@@ -75,8 +80,14 @@ public final class JarExplorationUtil {
             .filter(Objects::nonNull);
     }
 
-
     public static CompletableFuture<Void> unpackAsync(Path jarFile, Path destDir) {
+        return unpackAsync(jarFile, destDir, p -> true, file -> {});
+    }
+
+    public static CompletableFuture<Void> unpackAsync(Path jarFile,
+                                                      Path destDir,
+                                                      Predicate<Path> unpackFilter,
+                                                      Consumer<Path> additionalStages) {
         JarFile prejar;
         try {
             prejar = new JarFile(jarFile.toFile());
@@ -87,14 +98,15 @@ public final class JarExplorationUtil {
         final JarFile jar = prejar;
         Enumeration enumEntries = jar.entries();
 
-        List<CompletableFuture<?>> writeTasks = new ArrayList<>();
+        List<CompletableFuture<Void>> writeTasks = new ArrayList<>();
 
         while (enumEntries.hasMoreElements()) {
             JarEntry file = (JarEntry) enumEntries.nextElement();
 
             Path path = destDir.resolve(file.getName());
 
-            if (file.isDirectory()) { // if its a directory, create it
+            if (file.isDirectory() || !unpackFilter.test(path)) {
+                // if its a directory, it will be created anyway
                 continue;
             }
 
@@ -113,19 +125,27 @@ public final class JarExplorationUtil {
                 } catch (IOException ioe) {
                     ioe.printStackTrace();
                 }
-            }));
+            }).thenRunAsync(() -> additionalStages.accept(path)));
         }
-
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        Runnable countTask = () -> {
+            System.out.println(writeTasks.stream().filter(CompletableFuture::isDone).count());
+        };
+        scheduler.scheduleAtFixedRate(countTask, 0, 1000, TimeUnit.MILLISECONDS);
 
         return writeTasks.stream()
                          .reduce((a, b) -> a.thenCombine(b, (c, d) -> null))
                          .orElse(CompletableFuture.completedFuture(null))
-                         .thenRun(() -> {
+                         .handle((nothing, throwable) -> {
                              try {
+                                 // todo should close when the files are extracted, not when the
+                                 // user tasks are done
                                  jar.close();
+                                 scheduler.shutdown();
                              } catch (IOException e) {
                                  e.printStackTrace();
                              }
+                             return null;
                          });
     }
 

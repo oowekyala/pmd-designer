@@ -9,6 +9,7 @@ import java.util.Objects;
 
 import org.reactfx.EventSource;
 import org.reactfx.EventStream;
+import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.util.fxdesigner.MainDesignerController;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
@@ -41,6 +42,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 public class MessageChannel<T> {
 
     private final EventSource<Message<T>> channel = new EventSource<>();
+    private final Val<Message<T>> latestMessage = ReactfxUtil.latestValue(channel);
     private final Category logCategory;
 
 
@@ -64,6 +66,9 @@ public class MessageChannel<T> {
                           .map(Message::getContent);
     }
 
+    public Val<T> latestMessage() {
+        return latestMessage.map(Message::getContent);
+    }
 
     /**
      * Notifies the listeners of this channel with the given payload.

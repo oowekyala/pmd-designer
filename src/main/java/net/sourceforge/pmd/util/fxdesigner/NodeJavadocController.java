@@ -58,6 +58,11 @@ public class NodeJavadocController extends AbstractController implements NodeSel
 
     public void showYourself() {
         myStage.show();
+        getDesignerRoot().getService(DesignerRoot.NODE_SELECTION_CHANNEL)
+                         .latestMessage()
+                         .getOpt()
+                         .ifPresent(nse -> setFocusNode(nse.selected, nse.options));
+
     }
 
     @Override
