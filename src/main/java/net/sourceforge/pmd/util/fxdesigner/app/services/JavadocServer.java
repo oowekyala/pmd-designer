@@ -1,7 +1,6 @@
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -13,8 +12,8 @@ import org.apache.commons.io.FilenameUtils;
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 /**
  * Manages a set of language-specific servers.
@@ -32,17 +31,19 @@ public class JavadocServer implements ApplicationComponent {
     public JavadocServer(DesignerRoot designerRoot) {
         this.designerRoot = designerRoot;
 
-        getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER)
-            .unpackJar(ResourceUtil.thisJarPathInHost(),
-                       Paths.get("/"),
-                       1,
-                       this::shouldUnpack,
-                       this::nameCleanup)
-            .thenAccept(
-                manager ->
-                    LanguageRegistryUtil.getSupportedLanguages()
-                                        .forEach(lang -> buildLanguageServer(designerRoot, manager, lang,
-                                                                             nameForLanguage(lang.getTerseName()))));
+
+        ResourceManager manager = getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER).createSubordinate("javadocs");
+
+        manager.jarExtraction(ResourceUtil.thisJarPathInHost(), true)
+               .maxDepth(1)
+               .shouldUnpack(this::shouldUnpack)
+               .simpleRename(this::nameCleanup)
+               .extract()
+               .thenRun(() -> LanguageRegistryUtil.getSupportedLanguages()
+                                                  .forEach(lang -> buildLanguageServer(designerRoot, manager, lang,
+                                                                                       nameForLanguage(lang.getTerseName()))))
+               .thenCombine(manager.extractResource("javadoc/webview.css", "webview.css"),
+                            (a, b) -> true);
 
     }
 

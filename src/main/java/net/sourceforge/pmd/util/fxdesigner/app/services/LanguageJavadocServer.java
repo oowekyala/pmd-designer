@@ -47,22 +47,16 @@ public class LanguageJavadocServer implements ApplicationComponent {
         this.designerRoot = designerRoot;
         this.resourceManager = resourceManager;
 
-        isReady = resourceManager.unpackJar(javadocJar,
-                                            Paths.get("/"),
-                                            Integer.MAX_VALUE,
-                                            LanguageJavadocServer::shouldExtract,
-                                            s -> s,
-                                            this::postProcess)
-                                 .handle((r, t) -> {
+        isReady = resourceManager.jarExtraction(javadocJar)
+                                 .shouldUnpack(LanguageJavadocServer::shouldExtract)
+                                 .postProcessing(this::postProcess)
+                                 .extract()
+                                 .handle((nothing, t) -> {
                                      logInternalDebugInfo(() -> "Done loading javadoc", () -> "");
                                      // finalize the resource manager
-                                     r.markUptodate();
+                                     resourceManager.markUptodate();
                                      return true;
-                                 })
-                                 .thenCombine(
-                                     resourceManager.extractResource("javadoc/webview.css", "webview.css"),
-                                     (a, b) -> true
-                                 );
+                                 });
 
 
     }
@@ -139,7 +133,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
             .appendElement("link")
             .attr("rel", "stylesheet")
             .attr("type", "text/css")
-            .attr("href", path.relativize(resourceManager.getRootManagedDir()).resolve("webview.css").toString());
+            .attr("href", path.relativize(resourceManager.getRootManagedDir().getParent()).resolve("webview.css").toString());
 
         html.select("pre.grammar")
             .wrap("<div class='grammar-popup'></div>")

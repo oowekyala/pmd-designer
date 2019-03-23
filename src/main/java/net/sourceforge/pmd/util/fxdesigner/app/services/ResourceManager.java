@@ -5,27 +5,27 @@ import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.thisJarPathI
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ExtractionTask.ExtractionTaskBuilder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 /**
- * Manages a set of language-specific servers.
+ * Manages a versioned resource directory on disk. Other components
+ * can call in to order the extraction of a resource from the app's
+ * jar, which is only executed if the up to date version is not present.
+ *
+ * <p>This is still very immature, versioning is practically useless.
  *
  * @author Clément Fournier
  */
@@ -98,88 +98,31 @@ public class ResourceManager implements ApplicationComponent {
     public CompletableFuture<Path> extract(String fxdesignerResourcePath,
                                            String extractedPathRelativeToThis,
                                            int maxDepth) {
-        return ResourceUtil.unpackAsync(
-            thisJarPathInHost(),
-            Paths.get(ResourceUtil.resolveResource(fxdesignerResourcePath)),
-            maxDepth,
-            myManagedDir,
-            p -> true,
-            p -> myManagedDir.resolve(extractedPathRelativeToThis),
-            p -> {},
-            (f, p) -> {}
-        ).thenApply(nothing -> myManagedDir.resolve(ResourceUtil.resolveResource(fxdesignerResourcePath)));
+
+        return
+            jarExtraction(thisJarPathInHost(), true)
+                .maxDepth(maxDepth)
+                .layoutMapper(p -> myManagedDir.resolve(extractedPathRelativeToThis))
+                .exceptionHandler((p, t) -> logInternalException(t))
+                .extract()
+                .thenApply(nothing -> myManagedDir.resolve(ResourceUtil.resolveResource(fxdesignerResourcePath)));
     }
 
-    public CompletableFuture<ResourceManager> unpackJar(Path jarFile,
-                                                        Path jarRelativePath,
-                                                        int maxDepth,
-                                                        Predicate<Path> shouldUnpack,
-                                                        Function<String, String> finalRename) {
-        return unpackJar(jarFile,
-                         jarRelativePath,
-                         maxDepth,
-                         shouldUnpack,
-                         finalRename,
-                         p -> {});
+    public ExtractionTaskBuilder jarExtraction(Path jarFile, boolean stampContents) {
+        return ExtractionTask.newBuilder(jarFile, myManagedDir)
+                             .postProcessing(p -> jarPostProcessing(p, stampContents));
     }
 
-    /**
-     * Unpacks a jar if not already unpacked.
-     *
-     * @param jarRelativePath Directory in which to start unpacking. The root is "/"
-     * @param maxDepth        Max depth on which to recurse
-     * @param jarFile         Jar to unpack
-     * @param shouldUnpack    Files to unpack in the jar
-     * @param finalRename     File rename
-     * @param postProcessing  Actions to run on the final file
-     *
-     * @return A future that completes when the jar has been closed,
-     *     with this resource manager as value
-     */
-    public CompletableFuture<ResourceManager> unpackJar(Path jarFile,
-                                                        Path jarRelativePath,
-                                                        int maxDepth,
-                                                        Predicate<Path> shouldUnpack,
-                                                        Function<String, String> finalRename,
-                                                        Consumer<Path> postProcessing) {
-        if (thisTimeStamp().exists()) {
-            logInternalDebugInfo(() -> "Everything up to date", () -> "");
-            getLogger().logEvent(LogEntry.javadocServiceEntry(this, "", false));
-            return CompletableFuture.completedFuture(this);
+
+    private void jarPostProcessing(Path extracted, boolean shouldStampContents) {
+        if (shouldStampContents) {
+            try {
+                // stamp the file
+                timestampFor(extracted).toFile().createNewFile();
+            } catch (IOException e) {
+                logInternalException(e);
+            }
         }
-
-        logInternalDebugInfo(() -> "Unpacking jar...", jarFile::toString);
-
-
-        return ResourceUtil
-            .unpackAsync(
-                jarFile,
-                jarRelativePath,
-                maxDepth,
-                myManagedDir,
-                shouldUnpack.and(path -> !isUnpacked(ResourceUtil.getJarRelativePath(path.toUri()))),
-                targetPath -> renamed(targetPath, finalRename),
-                extracted -> jarPostProcessing(postProcessing, extracted),
-                (f, e) -> logInternalException(e)
-            )
-            .handle((nothing, t) -> {
-                if (t != null) {
-                    logInternalException(t);
-                }
-                return this;
-            });
-    }
-
-
-    private void jarPostProcessing(Consumer<Path> postProcessing, Path extracted) {
-        try {
-            // stamp the file
-            timestampFor(extracted).toFile().createNewFile();
-        } catch (IOException e) {
-            logInternalException(e);
-        }
-        // post processing task
-        postProcessing.accept(extracted);
     }
 
     private Path timestampFor(String jarRelativePath) {
@@ -212,6 +155,15 @@ public class ResourceManager implements ApplicationComponent {
         return relative.getParent().resolve(relative.getFileName() + TIMESTAMP + TIMESTAMP_VERSION);
     }
 
+    /**
+     * Creates a manager that manages a subdirectory of the directory
+     * managed by this dir. Subordinates of the same manager are independent,
+     * but if the manager is
+     *
+     * @param relativePath
+     *
+     * @return
+     */
     public ResourceManager createSubordinate(String relativePath) {
         return new ResourceManager(myManagedDir.resolve(relativePath), getDesignerRoot());
     }
@@ -223,10 +175,6 @@ public class ResourceManager implements ApplicationComponent {
 
     private boolean isUnpacked(String jarRelativePath) {
         return timestampFor(jarRelativePath).toFile().exists();
-    }
-
-    private static Path renamed(Path path, Function<String, String> renaming) {
-        return path.getParent().resolve(renaming.apply(FilenameUtils.getName(path.toString())));
     }
 
     @Override
@@ -250,4 +198,5 @@ public class ResourceManager implements ApplicationComponent {
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
     }
+
 }
