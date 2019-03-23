@@ -1,0 +1,17 @@
+.grammar-popup-anchor {
+    position: relative;
+}
+
+.grammar-popup-anchor .grammar-popup {
+    display: none;
+    position: absolute;
+    bottom: 5%;
+    left: 5%;
+    right: 5%;
+    background-color: #fff;
+    padding: .5em;
+}
+
+.grammar-popup-anchor:hover .grammar-popup {
+    display: block;
+}

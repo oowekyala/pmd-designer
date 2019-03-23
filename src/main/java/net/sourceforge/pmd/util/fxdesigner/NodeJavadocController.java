@@ -17,7 +17,10 @@ import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.web.WebView;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 /**
  * The javadoc pane.
@@ -46,6 +49,16 @@ public class NodeJavadocController extends AbstractController implements NodeSel
         webView.getEngine().setOnAlert(str -> System.out.println(str.getData()));
         webView.getEngine().setOnError(str -> str.getException().printStackTrace());
         initNodeSelectionHandling(getDesignerRoot(), EventStreams.never(), false);
+
+        webView.getEngine().setCreatePopupHandler(popupFeatures -> {
+            System.out.println("fofo");
+            Stage stage = new Stage(StageStyle.UTILITY);
+            WebView wv2 = new WebView();
+            stage.setScene(new Scene(wv2));
+            stage.show();
+            return wv2.getEngine();
+        });
+
     }
 
     private String noSelectionHtml() {

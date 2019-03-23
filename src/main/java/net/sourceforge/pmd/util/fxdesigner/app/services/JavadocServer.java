@@ -13,7 +13,7 @@ import org.apache.commons.io.FilenameUtils;
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 
 /**
@@ -33,7 +33,7 @@ public class JavadocServer implements ApplicationComponent {
         this.designerRoot = designerRoot;
 
         getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER)
-            .unpackJar(JarExplorationUtil.thisJarPathInHost(),
+            .unpackJar(ResourceUtil.thisJarPathInHost(),
                        Paths.get("/"),
                        1,
                        this::shouldUnpack,

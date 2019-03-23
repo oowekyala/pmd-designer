@@ -34,16 +34,23 @@ import org.apache.commons.io.FilenameUtils;
 
 
 /**
- *
+ * Deals with resource fetching and the hardcore details of when we're in a Jar
+ * vs when we're exploded in the IDE.
  */
-public final class JarExplorationUtil {
+public final class ResourceUtil {
 
 
-    private JarExplorationUtil() {
+    private static final String BASE_RESOURCE_PREFIX = "/net/sourceforge/pmd/util/fxdesigner/";
+
+    private ResourceUtil() {
 
     }
 
     private static final Object FILE_SYSTEM_LOCK = new Object();
+
+    public static String resolveResource(String relativeToDesignerDir) {
+        return BASE_RESOURCE_PREFIX + relativeToDesignerDir;
+    }
 
     private static final List<String> JAR_MIMES =
         Arrays.asList("application/x-java-archive", "application/java-archive");
@@ -134,28 +141,35 @@ public final class JarExplorationUtil {
         return FileSystems.getDefault().getPath(vdirPath).toAbsolutePath();
     }
 
+
     /**
      * Unpacks a [jarFile] to the given [destDir]. Only those entries matching the
-     * [unpackFilter] will be unpacked.
+     * [unpackFilter] will be unpacked. Each entry is unpacked in parallel. Some
+     * additional post processing can be done in parallel.
      *
      * @param jarRelativePath  Directory in which to start unpacking. The root is "/"
      * @param maxDepth         Max depth on which to recurse
      * @param unpackFilter     Filters those files that will be expanded
+     * @param layoutMapper     Maps the resolved output path (identical to the layout in the jar)
+     *                         to the extracted location. Using {@link Function#identity()} preserves
+     *                         the extracted structure entirely. The input path is absolute.
      * @param postProcessing   Called for each expanded entry with the path of the
      *                         extracted file
      * @param exceptionHandler Handles exceptions
      *
-     * @return A future that is done when all the jar has been processed.
+     * @return A future that is done when all the jar has been processed (including post-processing).
      */
     public static CompletableFuture<Void> unpackAsync(Path jarFile,
                                                       Path jarRelativePath,
                                                       int maxDepth,
                                                       Path destDir,
                                                       Predicate<Path> unpackFilter,
+                                                      Function<Path, Path> layoutMapper,
                                                       Consumer<Path> postProcessing,
                                                       BiConsumer<Path, Throwable> exceptionHandler) {
 
-        List<CompletableFuture<Void>> writeTasks = new ArrayList<>();
+        // list of tasks that normally yield a path to an extracted file
+        List<CompletableFuture<Path>> extractionTasks = new ArrayList<>();
         Path walkRoot;
         FileSystem fs = null;
         try {
@@ -172,11 +186,11 @@ public final class JarExplorationUtil {
                  .filter(unpackFilter)
                  .forEach(filePath -> {
                      Path relativePathInZip = walkRoot.resolve("").relativize(filePath);
-                     Path targetPath = destDir.resolve(relativePathInZip.toString()).toAbsolutePath();
+                     Path targetPath = layoutMapper.apply(destDir.resolve(relativePathInZip.toString()).toAbsolutePath());
 
-                     writeTasks.add(
+                     extractionTasks.add(
                          CompletableFuture
-                             .runAsync(() -> {
+                             .supplyAsync(() -> {
                                  try {
                                      Files.createDirectories(targetPath.getParent());
                                      // And extract the file
@@ -184,10 +198,11 @@ public final class JarExplorationUtil {
                                  } catch (IOException e) {
                                      exceptionHandler.accept(filePath, e);
                                  }
+
+                                 return targetPath;
                              })
-                             .thenRunAsync(() -> postProcessing.accept(targetPath))
                              .exceptionally(t -> {
-                                 exceptionHandler.accept(filePath, t);
+                                 exceptionHandler.accept(relativePathInZip, t);
                                  return null;
                              })
                      );
@@ -199,20 +214,33 @@ public final class JarExplorationUtil {
 
         final FileSystem finalFs = fs;
 
-        return writeTasks.stream()
-                         .reduce((a, b) -> a.thenCombine(b, (c, d) -> null))
-                         .orElse(CompletableFuture.completedFuture(null))
-                         .handle((nothing, throwable) -> {
-                             try {
-                                 if (finalFs != null) {
-                                     finalFs.close();
-                                 }
+        // close file system in all cases
+        allOf(extractionTasks).handle((nothing, throwable) -> {
+            try {
+                if (finalFs != null) {
+                    finalFs.close();
+                }
+            } catch (IOException e) {
+                exceptionHandler.accept(null, e);
+            }
+            return null;
+        });
 
-                             } catch (IOException e) {
-                                 exceptionHandler.accept(null, e);
-                             }
-                             return null;
-                         });
+        // return a task that completes when every post-processing is done
+        return allOf(extractionTasks.stream()
+                                    .map(extraction -> extraction.thenAccept(f -> {
+                                        try {
+                                            postProcessing.accept(f);
+                                        } catch (Exception e) {
+                                            exceptionHandler.accept(f, e);
+                                        }
+                                    }))
+                                    .collect(Collectors.toList()));
+
+    }
+
+    private static CompletableFuture<Void> allOf(List<? extends CompletableFuture<?>> futures) {
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
     }
 
     private static URI cleanupUri(Path jarFile) throws IOException, URISyntaxException {

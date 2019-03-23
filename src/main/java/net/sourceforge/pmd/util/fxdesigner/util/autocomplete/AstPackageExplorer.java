@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import net.sourceforge.pmd.lang.Language;
-import net.sourceforge.pmd.util.fxdesigner.util.JarExplorationUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 
 /**
@@ -24,11 +24,11 @@ class AstPackageExplorer implements NodeNameFinder {
 
     AstPackageExplorer(Language language) {
         availableNodeNames =
-            JarExplorationUtil.getClassesInPackage("net.sourceforge.pmd.lang." + language.getTerseName() + ".ast")
-                              .filter(clazz -> clazz.getSimpleName().startsWith("AST"))
-                              .filter(clazz -> !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()))
-                              .map(m -> m.getSimpleName().substring("AST".length()))
-                              .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
+            ResourceUtil.getClassesInPackage("net.sourceforge.pmd.lang." + language.getTerseName() + ".ast")
+                        .filter(clazz -> clazz.getSimpleName().startsWith("AST"))
+                        .filter(clazz -> !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers()))
+                        .map(m -> m.getSimpleName().substring("AST".length()))
+                        .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
 
     }
 

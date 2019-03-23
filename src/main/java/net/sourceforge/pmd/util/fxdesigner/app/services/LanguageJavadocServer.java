@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FilenameUtils;
 import org.jsoup.Jsoup;
@@ -57,7 +58,11 @@ public class LanguageJavadocServer implements ApplicationComponent {
                                      // finalize the resource manager
                                      r.markUptodate();
                                      return true;
-                                 });
+                                 })
+                                 .thenCombine(
+                                     resourceManager.extractResource("javadoc/webview.css", "webview.css"),
+                                     (a, b) -> true
+                                 );
 
 
     }
@@ -129,19 +134,23 @@ public class LanguageJavadocServer implements ApplicationComponent {
         html.select("a[href]").not(RELATIVE_LINK_SELECTOR)
             .forEach(org.jsoup.nodes.Node::unwrap);
 
-
+        // add css
         html.head()
-            .appendElement("style")
-            .text("pre {\n"
-                      + "  overflow-x: auto;\n"
-                      + "  white-space: pre-wrap;\n"
-                      + "  white-space: -moz-pre-wrap;\n"
-                      + "  white-space: -pre-wrap;\n"
-                      + "  white-space: -o-pre-wrap;\n"
-                      + "  word-wrap: break-word;\n"
-                      + "}");
+            .appendElement("link")
+            .attr("rel", "stylesheet")
+            .attr("type", "text/css")
+            .attr("href", path.relativize(resourceManager.getRootManagedDir()).resolve("webview.css").toString());
 
-        html.select("pre").attr("style", "white-space: pre-wrap;");
+        html.select("pre.grammar")
+            .wrap("<div class='grammar-popup'></div>")
+            .stream()
+            .map(Element::parent)
+            .collect(Collectors.toCollection(Elements::new))
+            .wrap("<div class='grammar-popup-anchor'></div>")
+            .stream()
+            .map(Element::parent)
+            .collect(Collectors.toCollection(Elements::new))
+            .prepend("See BNF...");
 
         Optional<Path> compactedPath = compactedPath(path.toString(), true);
 
@@ -167,8 +176,7 @@ public class LanguageJavadocServer implements ApplicationComponent {
     private static boolean isCompactable(String ref) {
         return !ref.contains("#")
             && FilenameUtils.getExtension(ref).equals("html")
-            && Character.isUpperCase(FilenameUtils.getBaseName(ref).charAt(0))
-            || "class-use".equals(Paths.get(ref).getParent().getFileName().toString());
+            && Character.isUpperCase(FilenameUtils.getBaseName(ref).charAt(0));
     }
 
     private static boolean shouldExtract(Path path) {
