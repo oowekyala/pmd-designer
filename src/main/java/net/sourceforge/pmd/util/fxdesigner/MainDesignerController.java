@@ -59,9 +59,9 @@ public class MainDesignerController extends AbstractController {
 
     /* Menu bar */
     @FXML
+    private MenuItem javadocImportMenuItem;
+    @FXML
     private MenuItem aboutMenuItem;
-//    @FXML
-//    private MenuItem javadocMenuItem;
     @FXML
     private MenuItem setupAuxclasspathMenuItem;
     @FXML
@@ -124,7 +124,7 @@ public class MainDesignerController extends AbstractController {
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
-//        javadocMenuItem.setOnAction(e -> nodeJavadocController.get().showYourself());
+        javadocImportMenuItem.setOnAction(e -> getService(DesignerRoot.JAVADOC_SERVER).extractDocs());
         saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
         aboutMenuItem.setOnAction(e -> SimplePopups.showAboutPopup(getDesignerRoot()));

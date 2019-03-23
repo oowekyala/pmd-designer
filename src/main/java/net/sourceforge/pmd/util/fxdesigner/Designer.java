@@ -85,7 +85,6 @@ public class Designer extends Application {
     public void start(Stage stage, DesignerRoot owner) throws IOException {
         this.owner = owner;
 
-        // TODO should display the 4 segment version number
         stage.setTitle("PMD Rule Designer (v " + Designer.VERSION + ')');
         setIcons(stage);
 
@@ -174,16 +173,5 @@ public class Designer extends Application {
                                        .collect(Collectors.toList());
 
         icons.addAll(images);
-    }
-
-
-    @SuppressWarnings("PMD.AvoidCatchingThrowable")
-    public static void main(String[] args) {
-        try {
-            launch(args);
-        } catch (Throwable unrecoverable) {
-            unrecoverable.printStackTrace();
-            System.exit(1);
-        }
     }
 }

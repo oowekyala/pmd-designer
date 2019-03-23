@@ -45,7 +45,7 @@ public class JavadocExtractor implements ApplicationComponent {
         output.jarExtraction(jar)
               .shouldUnpack(JavadocExtractor::shouldExtract)
               .postProcessing(this::postProcess)
-              .extractAsync()
+              .extract()
               .whenComplete((nothing, t) -> logInternalDebugInfo(() -> "Done loading javadoc", () -> ""))
               .thenRun(() -> {
                   try {

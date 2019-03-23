@@ -44,9 +44,15 @@ public class JavadocService implements ApplicationComponent {
 
         javadocJars = rootManager.createSubordinate("jars");
         javadocExploded = rootManager.createSubordinate("exploded");
+
+        Thread extractor = new Thread(this::extractDocs);
+        extractor.setName("Javadoc extractor");
+        extractor.setPriority(Thread.MIN_PRIORITY);
+        extractor.start();
+    }
+
+    public void extractDocs() {
         JavadocExtractor extractor = new JavadocExtractor(designerRoot, javadocExploded);
-
-
         // Extract all javadoc jars that are shipped in the fat jar
         // We could add
         javadocJars.jarExtraction(ResourceUtil.thisJarPathInHost())
@@ -54,7 +60,7 @@ public class JavadocService implements ApplicationComponent {
                    .shouldUnpack(this::shouldUnpackFromThisJar)
                    .simpleRename(this::nameCleanup)
                    .postProcessing(extractor::extractJar)
-                   .extractAsync();
+                   .extract();
 
         javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE);
     }

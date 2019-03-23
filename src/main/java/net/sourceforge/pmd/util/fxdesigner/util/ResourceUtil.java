@@ -15,6 +15,7 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -40,6 +41,10 @@ public final class ResourceUtil {
 
     }
 
+    /**
+     * Prepends a resource path with the root resource path of the designer.
+     * The given string path should not start with "/".
+     */
     public static String resolveResource(String relativeToDesignerDir) {
         return BASE_RESOURCE_PREFIX + relativeToDesignerDir;
     }
@@ -51,8 +56,8 @@ public final class ResourceUtil {
             .filter(Objects::nonNull);
     }
 
-    public static Stream<Path> pathsInResource(ClassLoader classLoader,
-                                               String resourcePath) {
+    private static Stream<Path> pathsInResource(ClassLoader classLoader,
+                                                String resourcePath) {
         Stream<URL> resources;
 
         try {
@@ -100,7 +105,7 @@ public final class ResourceUtil {
             .orElse(null);
     }
 
-    public static String getJarRelativePath(URI uri) {
+    private static String getJarRelativePath(URI uri) {
         if ("jar".equals(uri.getScheme())) {
             // we have to cut out the path to the jar + '!'
             // to get a path that's relative to the root of the jar filesystem
@@ -112,22 +117,18 @@ public final class ResourceUtil {
         }
     }
 
+    /**
+     * Returns an absolute path to the code location, ie the jar in which
+     * the app is bundled, or the directory in which the classes are laid
+     * out.
+     */
     public static Path thisJarPathInHost() {
-        String vdirPath;
         try {
-            vdirPath = ClassLoader.getSystemClassLoader().getResource("").toURI().getSchemeSpecificPart();
+            return Paths.get(ResourceUtil.class.getProtectionDomain().getCodeSource().getLocation().toURI()).toAbsolutePath();
         } catch (URISyntaxException e) {
             e.printStackTrace();
             return null;
         }
-
-        int jarIdx = vdirPath.indexOf('!');
-        if (jarIdx >= 0) {
-            // we're in a jar
-            vdirPath = vdirPath.substring("file:".length(), jarIdx);
-        }
-
-        return FileSystems.getDefault().getPath(vdirPath).toAbsolutePath();
     }
 
 

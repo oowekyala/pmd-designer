@@ -96,7 +96,7 @@ public class ExtractionTask {
      *
      * @return A future that is done when all the jar has been processed (including post-processing).
      */
-    private CompletableFuture<Void> execAsync() {
+    private CompletableFuture<Void> exec() {
 
         // list of tasks that normally yield a path to an extracted file
         List<CompletableFuture<Path>> extractionTasks = new ArrayList<>();
@@ -134,25 +134,15 @@ public class ExtractionTask {
 
                      Path filePath = bothPaths.getKey();
                      Path targetPath = bothPaths.getValue();
+                     try {
+                         Files.createDirectories(targetPath.getParent());
+                         // And extract the file
+                         Files.copy(filePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                     } catch (IOException e) {
+                         handleException(filePath, e);
+                     }
 
-                     extractionTasks.add(
-                         CompletableFuture
-                             .supplyAsync(() -> {
-                                 try {
-                                     Files.createDirectories(targetPath.getParent());
-                                     // And extract the file
-                                     Files.copy(filePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-                                 } catch (IOException e) {
-                                     handleException(filePath, e);
-                                 }
-
-                                 return targetPath;
-                             })
-                             .exceptionally(t -> {
-                                 handleException(targetPath, t);
-                                 return null;
-                             })
-                     );
+                     extractionTasks.add(CompletableFuture.completedFuture(targetPath));
                  });
         } catch (IOException | URISyntaxException e) {
             handleException(null, e);
@@ -281,7 +271,7 @@ public class ExtractionTask {
         }
 
         /**
-         * If the predicate is not true at the time {@link #extractAsync()} is called,
+         * If the predicate is not true at the time {@link #extract()} is called,
          * no extraction is performed. This method performs no extraction.
          */
         ExtractionTaskBuilder extractUnless(Supplier<Boolean> guard) {
@@ -309,9 +299,9 @@ public class ExtractionTask {
          * @return A future that is done when all the jar has been processed (including post-processing).
          * Never completes exceptionally, but errors are logged using the {@link #exceptionHandler(BiConsumer)}.
          */
-        public CompletableFuture<Void> extractAsync() {
+        public CompletableFuture<Void> extract() {
             if (doExtraction.get()) {
-                return createExtractionTask().execAsync();
+                return createExtractionTask().exec();
             }
             return CompletableFuture.completedFuture(null);
         }
