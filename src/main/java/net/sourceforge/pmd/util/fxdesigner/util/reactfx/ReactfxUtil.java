@@ -7,15 +7,17 @@ package net.sourceforge.pmd.util.fxdesigner.util.reactfx;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.reactfx.EventSource;
 import org.reactfx.EventStream;
 import org.reactfx.Subscription;
+import org.reactfx.util.FxTimer;
+import org.reactfx.util.Timer;
 import org.reactfx.value.Val;
 import org.reactfx.value.ValBase;
 import org.reactfx.value.Var;
@@ -37,8 +39,14 @@ public final class ReactfxUtil {
 
     }
 
-    public static <T> EventStream<T> distinctBetween(EventStream<T> ts, Duration duration) {
-        return VetoableEventStream.vetoableFrom(ts, t -> true, Objects::equals, (t, s) -> s, duration);
+
+    static Function<Runnable, Timer> defaultTimerFactory(Duration duration) {
+        return action -> FxTimer.create(duration, action);
+    }
+
+
+    public static <I> EventStream<I> distinctBetween(EventStream<I> input, Duration duration) {
+        return DistinctBetweenStream.distinctBetween(input, ReactfxUtil.defaultTimerFactory(duration));
     }
 
     /**

@@ -15,7 +15,6 @@ import org.reactfx.AwaitingEventStream;
 import org.reactfx.EventStream;
 import org.reactfx.EventStreamBase;
 import org.reactfx.Subscription;
-import org.reactfx.util.FxTimer;
 import org.reactfx.util.Timer;
 import org.reactfx.value.Val;
 
@@ -147,9 +146,7 @@ public final class VetoableEventStream<I> extends EventStreamBase<I> implements 
                                                           BiPredicate<I, I> isVeto,
                                                           BiFunction<I, I, I> vetoableReduction,
                                                           Duration vetoPeriod) {
-
-        Function<Runnable, Timer> timerFactory = action -> FxTimer.create(vetoPeriod, action);
-        return vetoableFrom(input, isVetoable, isVeto, vetoableReduction, timerFactory);
+        return vetoableFrom(input, isVetoable, isVeto, vetoableReduction, ReactfxUtil.defaultTimerFactory(vetoPeriod));
     }
 
     /**

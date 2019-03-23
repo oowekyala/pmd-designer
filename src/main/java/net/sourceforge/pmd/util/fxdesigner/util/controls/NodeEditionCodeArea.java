@@ -122,8 +122,6 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
                 TextPos2D target = getPmdLineAndColumnFromOffset(this, ev.getCharacterIndex());
 
                 findNodeAt(currentRoot, target)
-                    // don't randomly jump to top of eg ClassOrInterfaceBody
-                    .filter(this::isStartVisible)
                     .map(n -> NodeSelectionEvent.of(n, new DataHolder().withData(CARET_POSITION, target)))
                     .ifPresent(selectionEvts::push);
             }
@@ -137,7 +135,7 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
     }
 
     /** Scroll the editor to a node and makes it visible. */
-    private void scrollToNode(Node node) {
+    private void scrollToNode(Node node, boolean scrollToTop) {
 
         moveTo(node.getBeginLine() - 1, 0);
 
@@ -148,12 +146,13 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         int visibleLength = lastVisibleParToAllParIndex() - firstVisibleParToAllParIndex();
 
         boolean fitsViewPort = node.getEndLine() - node.getBeginLine() <= visibleLength;
-        boolean isStartVisible = isStartVisible(node);
+        boolean isStartVisible =
+            getRtfxParIndexFromPmdLine(node.getBeginLine()) >= firstVisibleParToAllParIndex();
         boolean isEndVisible =
             getRtfxParIndexFromPmdLine(node.getEndLine()) <= lastVisibleParToAllParIndex();
 
         if (fitsViewPort) {
-            if (!isStartVisible) {
+            if (!isStartVisible && scrollToTop) {
                 showParagraphAtTop(Math.max(node.getBeginLine() - 2, 0));
             }
             if (!isEndVisible) {
@@ -162,10 +161,6 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         } else if (!isStartVisible) {
             showParagraphAtTop(Math.max(node.getBeginLine() - 2, 0));
         }
-    }
-
-    private boolean isStartVisible(Node node) {
-        return getRtfxParIndexFromPmdLine(node.getBeginLine()) >= firstVisibleParToAllParIndex();
     }
 
 
@@ -223,7 +218,7 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
     private void highlightErrorNodes(Collection<? extends Node> nodes) {
         styleNodes(nodes, StyleLayerIds.ERROR, true);
         if (!nodes.isEmpty()) {
-            scrollToNode(nodes.iterator().next());
+            scrollToNode(nodes.iterator().next(), true);
         }
     }
 
@@ -242,7 +237,9 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         // editor must not be scrolled when finding a new selection in a
         // tree that is being edited
         if (node != null && !options.hasData(SELECTION_RECOVERY)) {
-            scrollToNode(node);
+            // don't randomly jump to top of eg ClassOrInterfaceBody
+            // when selecting from a caret position
+            scrollToNode(node, !options.hasData(CARET_POSITION));
         }
 
         if (Objects.equals(node, currentFocusNode.getValue())) {
