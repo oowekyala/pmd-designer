@@ -52,13 +52,16 @@ public final class AstTraversalUtil {
             return Optional.empty();
         }
 
+        if (AstTraversalUtil.getRoot(node) == myRoot) {
+            return Optional.of(node); // same tree, don't set cache
+        }
+
+        // user data of a node is the node it maps to in the other tree
         if (node.getUserData() instanceof Node) {
             return Optional.of((Node) node.getUserData());
         }
 
-        Optional<Node> result = AstTraversalUtil.getRoot(node) == myRoot
-                                ? Optional.of(node) // same tree
-                                : or(
+        Optional<Node> result = or(
                                     or(
                                         // first try with path
                                         findOldNodeInNewAst(node, myRoot),
