@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.findNodeAt;
@@ -137,8 +139,6 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
     /** Scroll the editor to a node and makes it visible. */
     private void scrollToNode(Node node, boolean scrollToTop) {
 
-        moveTo(node.getBeginLine() - 1, 0);
-
         if (getVisibleParagraphs().size() < 1) {
             return;
         }
@@ -153,13 +153,13 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
 
         if (fitsViewPort) {
             if (!isStartVisible && scrollToTop) {
-                showParagraphAtTop(Math.max(node.getBeginLine() - 2, 0));
+                showParagraphAtTop(max(node.getBeginLine() - 2, 0));
             }
             if (!isEndVisible) {
-                showParagraphAtBottom(Math.min(node.getEndLine(), getParagraphs().size()));
+                showParagraphAtBottom(min(node.getEndLine(), getParagraphs().size()));
             }
-        } else if (!isStartVisible) {
-            showParagraphAtTop(Math.max(node.getBeginLine() - 2, 0));
+        } else if (!isStartVisible && scrollToTop) {
+            showParagraphAtTop(max(node.getBeginLine() - 2, 0));
         }
     }
 
