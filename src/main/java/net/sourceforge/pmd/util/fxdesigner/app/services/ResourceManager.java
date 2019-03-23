@@ -42,19 +42,7 @@ public class ResourceManager implements ApplicationComponent {
         this.designerRoot = designerRoot;
         myManagedDir = unpackDir;
 
-        if (!isUpToDate()) {
-            try {
-                FileUtils.deleteDirectory(myManagedDir.toFile());
-            } catch (IOException e) {
-                logInternalException(e);
-            }
-        }
     }
-
-    protected boolean isUpToDate() {
-        return Files.exists(myManagedDir) && Files.isDirectory(myManagedDir);
-    }
-
 
     public final Path getRootManagedDir() {
         return myManagedDir;
@@ -90,7 +78,7 @@ public class ResourceManager implements ApplicationComponent {
             jarExtraction(thisJarPathInHost())
                 .maxDepth(maxDepth)
                 .jarRelativePath(Paths.get(ResourceUtil.resolveResource(fxdesignerResourcePath)))
-                .layoutMapper(p -> myManagedDir.resolve(extractedPathRelativeToThis))
+                .layoutMapper(p -> myManagedDir.resolve(extractedPathRelativeToThis).resolve(myManagedDir.relativize(p)))
                 .exceptionHandler((p, t) -> logInternalException(t))
                 .extractAsync()
                 .thenApply(nothing -> myManagedDir.resolve(ResourceUtil.resolveResource(fxdesignerResourcePath)));

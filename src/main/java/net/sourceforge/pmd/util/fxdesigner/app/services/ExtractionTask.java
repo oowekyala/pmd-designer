@@ -72,24 +72,8 @@ public class ExtractionTask {
     }
 
 
-    private Path getJarFile() {
-        return jarFile;
-    }
-
-    private Path getJarRelativePath() {
-        return jarRelativePath;
-    }
-
-    private int getMaxDepth() {
-        return maxDepth;
-    }
-
     private boolean shouldUnpack(Path inJar, Path laidOut) {
         return shouldUnpack.test(inJar, laidOut);
-    }
-
-    private Path getDestDir() {
-        return destDir;
     }
 
     public Path layout(Path targetPath) {
@@ -119,20 +103,26 @@ public class ExtractionTask {
         Path walkRoot;
         FileSystem fs = null;
         try {
-            URI uri = cleanupUri(getJarFile());
+            URI uri = cleanupUri(jarFile);
             if ("jar".equals(uri.getScheme())) {
                 fs = ResourceUtil.getFileSystem(uri);
-                walkRoot = fs.getPath(getJarRelativePath().toString());
+                walkRoot = fs.getPath(jarRelativePath.toString());
             } else {
-                walkRoot = getJarFile();
+
+                if (jarRelativePath.getRoot() != null) {
+                    // remove root
+                    walkRoot = jarFile.resolve(jarRelativePath.toString().substring(1));
+                } else {
+                    walkRoot = jarFile.resolve(jarRelativePath);
+                }
             }
 
-            Files.walk(walkRoot, getMaxDepth())
+            Files.walk(walkRoot, maxDepth)
                  .filter(filePath -> !Files.isDirectory(filePath))
                  .map(filePath -> { // filePath is relative to the file system
 
                      Path relativePathInZip = walkRoot.relativize(filePath);
-                     Path targetPath = layout(getDestDir().resolve(relativePathInZip.toString()).toAbsolutePath());
+                     Path targetPath = layout(destDir.resolve(relativePathInZip.toString()).toAbsolutePath());
                      if (!shouldUnpack(relativePathInZip, targetPath)) {
                          return null;
                      } else {
