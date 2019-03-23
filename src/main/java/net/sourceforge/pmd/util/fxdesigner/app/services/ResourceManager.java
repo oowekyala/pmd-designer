@@ -2,15 +2,15 @@ package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.thisJarPathInHost;
 
-import java.io.File;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
 
 import org.apache.commons.io.FileUtils;
 
@@ -21,55 +21,42 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 /**
- * Manages a versioned resource directory on disk. Other components
+ * Manages a resource directory on disk. Other components
  * can call in to order the extraction of a resource from the app's
- * jar, which is only executed if the up to date version is not present.
+ * jar.
  *
- * <p>This is still very immature, versioning is practically useless.
+ * <p>This is still very immature...
  *
  * @author Clément Fournier
  */
 public class ResourceManager implements ApplicationComponent {
 
-    // bump to invalidate cache
-    private static final String TIMESTAMP_VERSION = "11";
-    private static final String TIMESTAMP = "-timestamp-";
 
     private final DesignerRoot designerRoot;
 
     private final Path myManagedDir;
 
 
-    public ResourceManager(Path unpackDir, DesignerRoot designerRoot) {
+    public ResourceManager(Path unpackDir,
+                           DesignerRoot designerRoot) {
         this.designerRoot = designerRoot;
         myManagedDir = unpackDir;
 
-        File dir = myManagedDir.toFile();
-        if (dir.exists() && dir.isDirectory()) {
-            // there are outdated timestamps
-            List<File> thisStamps = Arrays.stream(Objects.requireNonNull(dir.listFiles()))
-                                          .filter(it -> it.getName().matches("this" + TIMESTAMP + "\\d+"))
-                                          .collect(Collectors.toList());
-            boolean outOfDate =
-                !thisStamps.isEmpty() && thisStamps.stream().noneMatch(it -> it.equals(thisTimeStamp()));
-
-            if (outOfDate) {
-                try {
-                    FileUtils.deleteDirectory(dir);
-                } catch (IOException e) {
-                    logInternalException(e);
-                }
-            } else {
-                // remove old stamps
-                thisStamps.stream()
-                          .filter(it -> !it.equals(thisTimeStamp()))
-                          .forEach(File::delete);
+        if (!isUpToDate()) {
+            try {
+                FileUtils.deleteDirectory(myManagedDir.toFile());
+            } catch (IOException e) {
+                logInternalException(e);
             }
         }
     }
 
+    protected boolean isUpToDate() {
+        return Files.exists(myManagedDir) && Files.isDirectory(myManagedDir);
+    }
 
-    public Path getRootManagedDir() {
+
+    public final Path getRootManagedDir() {
         return myManagedDir;
     }
 
@@ -100,82 +87,115 @@ public class ResourceManager implements ApplicationComponent {
                                            int maxDepth) {
 
         return
-            jarExtraction(thisJarPathInHost(), true)
+            jarExtraction(thisJarPathInHost())
                 .maxDepth(maxDepth)
+                .jarRelativePath(Paths.get(ResourceUtil.resolveResource(fxdesignerResourcePath)))
                 .layoutMapper(p -> myManagedDir.resolve(extractedPathRelativeToThis))
                 .exceptionHandler((p, t) -> logInternalException(t))
-                .extract()
+                .extractAsync()
                 .thenApply(nothing -> myManagedDir.resolve(ResourceUtil.resolveResource(fxdesignerResourcePath)));
     }
 
-    public ExtractionTaskBuilder jarExtraction(Path jarFile, boolean stampContents) {
-        return ExtractionTask.newBuilder(jarFile, myManagedDir)
-                             .postProcessing(p -> jarPostProcessing(p, stampContents));
+    public ExtractionTaskBuilder jarExtraction(Path jarFile) {
+        return ExtractionTask.newBuilder(jarFile, myManagedDir);
     }
 
-
-    private void jarPostProcessing(Path extracted, boolean shouldStampContents) {
-        if (shouldStampContents) {
-            try {
-                // stamp the file
-                timestampFor(extracted).toFile().createNewFile();
-            } catch (IOException e) {
-                logInternalException(e);
-            }
-        }
-    }
-
-    private Path timestampFor(String jarRelativePath) {
-        return myManagedDir.resolve(jarRelativePath + TIMESTAMP + TIMESTAMP_VERSION);
-    }
-
-
-    /**
-     * Mark that all resources that are managed by this manager are up to
-     * date, so they can be picked up on the next run.
-     */
-    public void markUptodate() {
-
-        try {
-            // stamp the file
-            thisTimeStamp().createNewFile();
-            logInternalDebugInfo(() -> "Locking down on version " + TIMESTAMP_VERSION, () -> "");
-        } catch (IOException e) {
-            logInternalException(e);
-        }
-
-    }
-
-    private File thisTimeStamp() {
-        return timestampFor("this").toFile();
-    }
-
-    private Path timestampFor(Path unpacked) {
-        Path relative = myManagedDir.resolve(unpacked);
-        return relative.getParent().resolve(relative.getFileName() + TIMESTAMP + TIMESTAMP_VERSION);
-    }
 
     /**
      * Creates a manager that manages a subdirectory of the directory
-     * managed by this dir. Subordinates of the same manager are independent,
-     * but if the manager is
-     *
-     * @param relativePath
-     *
-     * @return
+     * managed by this dir.
      */
-    public ResourceManager createSubordinate(String relativePath) {
-        return new ResourceManager(myManagedDir.resolve(relativePath), getDesignerRoot());
+    public ResourceManager createSubordinate(String dirRelativePath) {
+        return new ResourceManager(myManagedDir.resolve(dirRelativePath), getDesignerRoot());
     }
 
-    public Optional<Path> getUnpackedFile(String jarRelativePath) {
-        return isUnpacked(jarRelativePath) ? Optional.of(myManagedDir.resolve(jarRelativePath)) : Optional.empty();
+    /**
+     * Creates a manager that manages the same directory.
+     */
+    public ResourceManager createAlias() {
+        return new ResourceManager(myManagedDir, getDesignerRoot());
     }
 
 
-    private boolean isUnpacked(String jarRelativePath) {
-        return timestampFor(jarRelativePath).toFile().exists();
+    /**
+     * Creates a manager that manages a the same directory.
+     */
+    public ResourceManager close() {
+
+        return this;
     }
+
+    /**
+     * Returns an absolute path to the file addressed by the relative
+     * path.
+     */
+    public Optional<Path> getUnpackedFile(String dirRelativePath) {
+        return Optional.of(myManagedDir.resolve(dirRelativePath).toAbsolutePath()).filter(it -> it.toFile().exists());
+    }
+
+    /**
+     * Output a checksum for the file.
+     *
+     * @return true if the file was signed successfully
+     */
+    public boolean sign(Path file) {
+        return signOp(file, false, (target, checksumPath) -> {
+            long checksum;
+            try {
+                checksum = FileUtils.checksumCRC32(target.toFile());
+                Files.deleteIfExists(checksumPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+
+            try (DataOutputStream dos = new DataOutputStream(Files.newOutputStream(checksumPath))) {
+                dos.writeLong(checksum);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        });
+    }
+
+    /**
+     * Checks whether the file matches its recorded checksum. Returns false if the
+     * file has no recorded checksum. Use {@link #sign(Path)} to record a checksum.
+     */
+    public boolean isUpToDate(Path path) {
+        return signOp(path, false, (target, checksumPath) -> {
+            if (!Files.exists(checksumPath)) {
+                return false;
+            }
+
+
+            long cachedChecksum;
+            long actualChecksum;
+            try (DataInputStream is = new DataInputStream(Files.newInputStream(checksumPath))) {
+                cachedChecksum = is.readLong();
+                actualChecksum = FileUtils.checksumCRC32(target.toFile());
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+
+            return cachedChecksum == actualChecksum;
+        });
+    }
+
+
+    private <T> T signOp(Path target, T noFile, BiFunction<Path, Path, T> fileAndChecksumConsumer) {
+
+        if (!Files.exists(target)) {
+            return noFile;
+        }
+
+        Path checksumPath = target.getParent().resolve(target.getFileName().toString() + "-checksum");
+
+        return fileAndChecksumConsumer.apply(target, checksumPath);
+    }
+
 
     @Override
     public Category getLogCategory() {
@@ -198,5 +218,4 @@ public class ResourceManager implements ApplicationComponent {
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
     }
-
 }

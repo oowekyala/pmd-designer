@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -24,9 +24,13 @@ import org.apache.commons.io.FilenameUtils;
 
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
+import javafx.util.Pair;
+
 /**
- * Describes a task extracting files from a jar. This should work both when
- * the app is run from a jar, or from a directory in the IDE.
+ * Describes a task extracting files from a jar. This should work both
+ * when the app is run from a jar, or from a directory in the IDE. In the
+ * latter case when the doc says eg "path relative to the jar", it mean
+ * "relative to the filesystem root".
  */
 public class ExtractionTask {
 
@@ -36,7 +40,7 @@ public class ExtractionTask {
     private final Path jarRelativePath;
     private final Path destDir;
     private final int maxDepth;
-    private final Predicate<Path> shouldUnpack;
+    private final BiPredicate<Path, Path> shouldUnpack;
     private final Function<Path, Path> layoutMapper;
     private final Consumer<Path> postProcessing;
     private final BiConsumer<Path, Throwable> exceptionHandler;
@@ -46,18 +50,13 @@ public class ExtractionTask {
      * @param jarRelativePath  Directory in which to start unpacking. The root is "/"
      * @param maxDepth         Max depth on which to recurse
      * @param shouldUnpack     Filters those files that will be expanded
-     * @param layoutMapper     Maps the resolved output path (identical to the layout in the jar)
-     *                         to the extracted location. Using {@link Function#identity()} preserves
-     *                         the extracted structure entirely. The input path is absolute.
-     * @param postProcessing   Called for each expanded entry with the path of the
-     *                         extracted file
      * @param exceptionHandler Handles exceptions
      */
     private ExtractionTask(Path jarFile,
                            Path jarRelativePath,
                            Path destDir,
                            int maxDepth,
-                           Predicate<Path> shouldUnpack,
+                           BiPredicate<Path, Path> shouldUnpack,
                            Function<Path, Path> layoutMapper,
                            Consumer<Path> postProcessing,
                            BiConsumer<Path, Throwable> exceptionHandler) {
@@ -73,23 +72,23 @@ public class ExtractionTask {
     }
 
 
-    public Path getJarFile() {
+    private Path getJarFile() {
         return jarFile;
     }
 
-    public Path getJarRelativePath() {
+    private Path getJarRelativePath() {
         return jarRelativePath;
     }
 
-    public int getMaxDepth() {
+    private int getMaxDepth() {
         return maxDepth;
     }
 
-    public boolean shouldUnpack(Path inJar) {
-        return shouldUnpack.test(inJar);
+    private boolean shouldUnpack(Path inJar, Path laidOut) {
+        return shouldUnpack.test(inJar, laidOut);
     }
 
-    public Path getDestDir() {
+    private Path getDestDir() {
         return destDir;
     }
 
@@ -97,12 +96,12 @@ public class ExtractionTask {
         return layoutMapper.apply(targetPath);
     }
 
-    public void postProcess(Path extracted) {
+    private void postProcess(Path extracted) {
         postProcessing.accept(extracted);
     }
 
 
-    public void handleException(Path p, Throwable t) {
+    private void handleException(Path p, Throwable t) {
         exceptionHandler.accept(p, t);
     }
 
@@ -130,10 +129,21 @@ public class ExtractionTask {
 
             Files.walk(walkRoot, getMaxDepth())
                  .filter(filePath -> !Files.isDirectory(filePath))
-                 .filter(this::shouldUnpack)
-                 .forEach(filePath -> {
-                     Path relativePathInZip = walkRoot.resolve("").relativize(filePath);
+                 .map(filePath -> { // filePath is relative to the file system
+
+                     Path relativePathInZip = walkRoot.relativize(filePath);
                      Path targetPath = layout(getDestDir().resolve(relativePathInZip.toString()).toAbsolutePath());
+                     if (!shouldUnpack(relativePathInZip, targetPath)) {
+                         return null;
+                     } else {
+                         return new Pair<>(filePath, targetPath);
+                     }
+                 })
+                 .filter(Objects::nonNull)
+                 .forEach(bothPaths -> {
+
+                     Path filePath = bothPaths.getKey();
+                     Path targetPath = bothPaths.getValue();
 
                      extractionTasks.add(
                          CompletableFuture
@@ -149,7 +159,7 @@ public class ExtractionTask {
                                  return targetPath;
                              })
                              .exceptionally(t -> {
-                                 handleException(relativePathInZip, t);
+                                 handleException(targetPath, t);
                                  return null;
                              })
                      );
@@ -182,11 +192,15 @@ public class ExtractionTask {
                                             handleException(f, e);
                                         }
                                     }))
-                                    .collect(Collectors.toList()));
+                                    .collect(Collectors.toList()))
+            .exceptionally(e -> {
+                exceptionHandler.accept(null, e);
+                return null;
+            });
 
     }
 
-    public static ExtractionTaskBuilder newBuilder(Path jarFile, Path destDir) {
+    static ExtractionTaskBuilder newBuilder(Path jarFile, Path destDir) {
         return new ExtractionTaskBuilder(jarFile, destDir);
     }
 
@@ -215,11 +229,11 @@ public class ExtractionTask {
         private final Path destDir;
         private Path jarRelativePath = Paths.get("/");
         private int maxDepth = Integer.MAX_VALUE;
-        private Predicate<Path> shouldUnpack = p -> true;
+        private BiPredicate<Path, Path> shouldUnpack = (p, q) -> true;
         private Function<Path, Path> layoutMapper = Function.identity();
         private Consumer<Path> postProcessing = p -> {};
         private BiConsumer<Path, Throwable> exceptionHandler = (p, t) -> t.printStackTrace();
-        private Supplier<Boolean> shouldRun = () -> true;
+        private Supplier<Boolean> doExtraction = () -> true;
 
         private ExtractionTaskBuilder(Path jarFile, Path destDir) {
             this.jarFile = jarFile;
@@ -232,40 +246,59 @@ public class ExtractionTask {
             return this;
         }
 
-        public ExtractionTaskBuilder maxDepth(int maxDepth) {
+        ExtractionTaskBuilder maxDepth(int maxDepth) {
             this.maxDepth = maxDepth;
             return this;
         }
 
-        public ExtractionTaskBuilder shouldUnpack(Predicate<Path> shouldUnpack) {
+        /**
+         * A predicate testing the relative path in the Jar for whether it should
+         * be extracted or not. First arg is the path relative to the root of the
+         * walk. Second arg is the absolute path laid out by the {@link #layoutMapper(Function)}.
+         */
+        ExtractionTaskBuilder shouldUnpack(BiPredicate<Path, Path> shouldUnpack) {
             this.shouldUnpack = shouldUnpack;
             return this;
         }
 
-        public ExtractionTaskBuilder layoutMapper(Function<Path, Path> layoutMapper) {
+        /**
+         * @param layoutMapper Maps paths relative to the {@link #jarRelativePath(Path)}
+         *                     to the location they should be extracted in. Using {@link Function#identity()}
+         *                     preserves the jar structure entirely. The input path is absolute.
+         */
+        ExtractionTaskBuilder layoutMapper(Function<Path, Path> layoutMapper) {
             this.layoutMapper = layoutMapper;
             return this;
         }
 
-        public ExtractionTaskBuilder simpleRename(Function<String, String> renaming) {
+        ExtractionTaskBuilder simpleRename(Function<String, String> renaming) {
             this.layoutMapper = path -> path.getParent().resolve(renaming.apply(FilenameUtils.getName(path.toString())));
             return this;
         }
 
-        public ExtractionTaskBuilder postProcessing(Consumer<Path> postProcessing) {
+        /**
+         * @param postProcessing Called for each expanded entry with the
+         *                       path of the extracted file
+         */
+        ExtractionTaskBuilder postProcessing(Consumer<Path> postProcessing) {
             this.postProcessing = this.postProcessing.andThen(postProcessing);
             return this;
         }
 
-        public ExtractionTaskBuilder exceptionHandler(BiConsumer<Path, Throwable> exceptionHandler) {
+        ExtractionTaskBuilder exceptionHandler(BiConsumer<Path, Throwable> exceptionHandler) {
             this.exceptionHandler = exceptionHandler;
             return this;
         }
 
-        public ExtractionTaskBuilder runUnless(Supplier<Boolean> shouldRun) {
-            this.shouldRun = shouldRun;
+        /**
+         * If the predicate is not true at the time {@link #extractAsync()} is called,
+         * no extraction is performed. This method performs no extraction.
+         */
+        ExtractionTaskBuilder extractUnless(Supplier<Boolean> guard) {
+            this.doExtraction = () -> !guard.get();
             return this;
         }
+
 
         private ExtractionTask createExtractionTask() {
             return new ExtractionTask(jarFile,
@@ -284,13 +317,13 @@ public class ExtractionTask {
          * additional post processing can be done in parallel.
          *
          * @return A future that is done when all the jar has been processed (including post-processing).
+         * Never completes exceptionally, but errors are logged using the {@link #exceptionHandler(BiConsumer)}.
          */
-        public CompletableFuture<Void> extract() {
-            if (!shouldRun.get()) {
-                return CompletableFuture.completedFuture(null);
+        public CompletableFuture<Void> extractAsync() {
+            if (doExtraction.get()) {
+                return createExtractionTask().execAsync();
             }
-
-            return createExtractionTask().execAsync();
+            return CompletableFuture.completedFuture(null);
         }
     }
 }

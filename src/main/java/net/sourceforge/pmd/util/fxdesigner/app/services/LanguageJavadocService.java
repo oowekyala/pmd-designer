@@ -25,12 +25,13 @@ import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ExtractionTask.ExtractionTaskBuilder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 
 /**
  * @author Clément Fournier
  */
-public class LanguageJavadocServer implements ApplicationComponent {
+public class LanguageJavadocService implements ApplicationComponent {
 
     private static final String RELATIVE_LINK_SELECTOR = "a[href~=(?i)\\.\\..*]";
     private final Language language;
@@ -39,30 +40,28 @@ public class LanguageJavadocServer implements ApplicationComponent {
     private CompletableFuture<Boolean> isReady;
     private static final Pattern EXCLUDED_FILES = Pattern.compile(".*?lang/\\w+/rule/.*|.*-.*.html");
 
-    public LanguageJavadocServer(Language language,
-                                 DesignerRoot designerRoot,
-                                 Path javadocJar,
-                                 ResourceManager resourceManager) {
+    public LanguageJavadocService(Language language,
+                                  DesignerRoot designerRoot,
+                                  ExtractionTaskBuilder jarExtraction,
+                                  ResourceManager resourceManager) {
+
         this.language = language;
         this.designerRoot = designerRoot;
         this.resourceManager = resourceManager;
 
-        isReady = resourceManager.jarExtraction(javadocJar)
-                                 .shouldUnpack(LanguageJavadocServer::shouldExtract)
-                                 .postProcessing(this::postProcess)
-                                 .extract()
-                                 .handle((nothing, t) -> {
-                                     logInternalDebugInfo(() -> "Done loading javadoc", () -> "");
-                                     // finalize the resource manager
-                                     resourceManager.markUptodate();
-                                     return true;
-                                 });
+        isReady = jarExtraction.shouldUnpack(LanguageJavadocService::shouldExtract)
+                               .postProcessing(this::postProcess)
+                               .extractAsync()
+                               .thenApply(nothing -> {
+                                   logInternalDebugInfo(() -> "Done loading javadoc", () -> "");
+                                   return true;
+                               });
 
 
     }
 
     public Optional<URL> docUrl(Class<? extends Node> clazz, boolean compact) {
-        if (!isReady()) { // there's a missed opportunity for parallelism here
+        if (!isReady()) {
             return Optional.empty();
         } else {
 
@@ -173,10 +172,13 @@ public class LanguageJavadocServer implements ApplicationComponent {
             && Character.isUpperCase(FilenameUtils.getBaseName(ref).charAt(0));
     }
 
-    private static boolean shouldExtract(Path path) {
-        return !EXCLUDED_FILES.matcher(path.toString()).matches();
+    private static boolean shouldExtract(Path injar, Path laidout) {
+        return !EXCLUDED_FILES.matcher(injar.toString()).matches();
     }
 
+    public void whenReady(Runnable action) {
+        isReady.thenRunAsync(action);
+    }
 
     public boolean isReady() {
         try {
