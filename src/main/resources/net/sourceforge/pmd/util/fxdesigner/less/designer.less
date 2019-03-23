@@ -26,7 +26,7 @@
       @foreach-i: {
         @color: extract(@removal-color-stack, @i + 1);
         -fx-background-color: @color; &:focused {
-          -fx-background-color: linear-gradient(to right, @color 0%, @selection-color);
+          -fx-background-color: linear-gradient(to right, @color 0%, @selection-color 20%);
         }
       };
 
