@@ -122,6 +122,8 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
                 TextPos2D target = getPmdLineAndColumnFromOffset(this, ev.getCharacterIndex());
 
                 findNodeAt(currentRoot, target)
+                    // don't randomly jump to top of eg ClassOrInterfaceBody
+                    .filter(this::isStartVisible)
                     .map(n -> NodeSelectionEvent.of(n, new DataHolder().withData(CARET_POSITION, target)))
                     .ifPresent(selectionEvts::push);
             }
@@ -146,8 +148,7 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         int visibleLength = lastVisibleParToAllParIndex() - firstVisibleParToAllParIndex();
 
         boolean fitsViewPort = node.getEndLine() - node.getBeginLine() <= visibleLength;
-        boolean isStartVisible =
-            getRtfxParIndexFromPmdLine(node.getBeginLine()) >= firstVisibleParToAllParIndex();
+        boolean isStartVisible = isStartVisible(node);
         boolean isEndVisible =
             getRtfxParIndexFromPmdLine(node.getEndLine()) <= lastVisibleParToAllParIndex();
 
@@ -161,6 +162,10 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         } else if (!isStartVisible) {
             showParagraphAtTop(Math.max(node.getBeginLine() - 2, 0));
         }
+    }
+
+    private boolean isStartVisible(Node node) {
+        return getRtfxParIndexFromPmdLine(node.getBeginLine()) >= firstVisibleParToAllParIndex();
     }
 
 
