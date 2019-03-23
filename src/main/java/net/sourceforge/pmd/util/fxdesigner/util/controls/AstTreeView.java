@@ -49,6 +49,8 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
     private final Var<Function<Node, Collection<String>>> additionalStyleClasses =
         Var.newSimpleVar(n -> Collections.emptySet());
 
+    private String debugName = "AstTreeView";
+
 
     /** Only provided for scenebuilder, not used at runtime. */
     public AstTreeView() {
@@ -213,4 +215,12 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
     }
 
 
+    public void setDebugName(String debugName) {
+        this.debugName = debugName;
+    }
+
+    @Override
+    public String getDebugName() {
+        return debugName;
+    }
 }

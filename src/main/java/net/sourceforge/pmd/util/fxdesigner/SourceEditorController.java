@@ -113,6 +113,9 @@ public class SourceEditorController extends AbstractController {
     protected void beforeParentInit() {
         initializeLanguageSelector(); // languageVersionProperty() must be initialized
 
+        oldAstTreeView.setDebugName("TreeView (old ast)");
+        astTreeView.setDebugName("TreeView (new ast)");
+
         oldAstManager.languageVersionProperty().bind(
             astManager.languageVersionProperty()
                       .map(LanguageVersion::getTerseName)
