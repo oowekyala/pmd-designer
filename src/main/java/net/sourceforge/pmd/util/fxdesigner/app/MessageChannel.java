@@ -63,6 +63,12 @@ public class MessageChannel<T> {
      */
     public EventStream<T> messageStream(boolean alwaysHandle,
                                         ApplicationComponent component) {
+        // Eliminate duplicate messages in close succession.
+        // TreeView selection is particularly shitty in that regard because
+        // it emits many events for what corresponds to one click
+
+        // This relies on the equality of two messages, so equals and hashcode
+        // must be used correctly.
         return ReactfxUtil.distinctBetween(channel, Duration.ofMillis(100))
                           .hook(message -> logMessageTrace(component, message, () -> ""))
                           .filter(message -> alwaysHandle || !component.equals(message.getOrigin()))
@@ -156,7 +162,7 @@ public class MessageChannel<T> {
 
         @Override
         public String toString() {
-            return getContent() + "(" + Objects.hashCode(getContent()) + ") from " + getOrigin().getClass().getSimpleName();
+            return getContent() + "(" + hashCode() + ") from " + getOrigin().getDebugName();
         }
     }
 }

@@ -41,8 +41,8 @@ public final class DistinctBetweenStream<I> extends EventStreamBase<I> {
         return input.subscribe(value -> {
             Object prevToCompare = previous;
             previous = value;
+            timer.restart();
             if (!Objects.equals(value, prevToCompare)) {
-                timer.restart();
                 emit(value);
             }
         });

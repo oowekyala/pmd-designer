@@ -6,6 +6,8 @@ package net.sourceforge.pmd.util.fxdesigner.app;
 
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.printShortStackTrace;
 
+import java.util.Objects;
+
 import org.reactfx.EventStream;
 import org.reactfx.value.Val;
 
@@ -104,6 +106,24 @@ public interface NodeSelectionSource extends ApplicationComponent {
 
         public static NodeSelectionEvent of(Node selected, DataHolder options) {
             return new NodeSelectionEvent(selected, options);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            NodeSelectionEvent that = (NodeSelectionEvent) o;
+            return Objects.equals(selected, that.selected) &&
+                Objects.equals(options, that.options);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(selected, options);
         }
     }
 }

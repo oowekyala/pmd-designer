@@ -312,12 +312,19 @@ public class SourceEditorController extends AbstractController {
             astManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
                       .ifPresent(this::setUpToDateCompilationUnit);
 
-            oldAstManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
-                         .ifPresent(n -> oldAstTreeView.setAstRoot(n));
-
         } catch (ParseAbortedException e) {
-            editorTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
+            astTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
             getGlobalState().writableGlobalCompilationUnitProperty().setValue(null);
+        }
+
+        try {
+            oldAstManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
+                         .ifPresent(n -> {
+                             oldAstTreeView.setAstRoot(n);
+                             oldAstTitledPane.errorMessageProperty().setValue("");
+                         });
+        } catch (ParseAbortedException e) {
+            oldAstTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
         }
     }
 
@@ -328,7 +335,7 @@ public class SourceEditorController extends AbstractController {
 
 
     private void setUpToDateCompilationUnit(Node node) {
-        editorTitledPane.errorMessageProperty().setValue("");
+        astTitledPane.errorMessageProperty().setValue("");
         astTreeView.setAstRoot(node);
     }
 
