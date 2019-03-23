@@ -70,7 +70,7 @@ public class Designer extends Application {
 
 
     private long initStartTimeMillis;
-    private DesignerRoot owner;
+    private DesignerRoot designerRoot;
 
     public Designer() {
         initStartTimeMillis = System.currentTimeMillis();
@@ -82,8 +82,14 @@ public class Designer extends Application {
         start(stage, new DesignerRootImpl(stage, params));
     }
 
+
+    @Override
+    public void stop() {
+        designerRoot.shutdownServices();
+    }
+
     public void start(Stage stage, DesignerRoot owner) throws IOException {
-        this.owner = owner;
+        this.designerRoot = owner;
 
         stage.setTitle("PMD Rule Designer (v " + Designer.VERSION + ')');
         setIcons(stage);
@@ -155,7 +161,7 @@ public class Designer extends Application {
      * Only set after {@link #start(Stage)} is called.
      */
     public DesignerRoot getDesignerRoot() {
-        return owner;
+        return designerRoot;
     }
 
     private void setIcons(Stage primaryStage) {

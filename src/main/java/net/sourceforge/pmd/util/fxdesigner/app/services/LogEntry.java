@@ -109,7 +109,7 @@ public class LogEntry implements Comparable<LogEntry> {
 
     public static LogEntry javadocServiceEntry(ApplicationComponent component, String shortMessage, boolean trace) {
         return new LogEntry(shortMessage, "in " + component.getDebugName(),
-                            Category.JAVADOC_SERVER,
+                            Category.JAVADOC_SERVICE,
                             trace);
     }
 
@@ -149,7 +149,7 @@ public class LogEntry implements Comparable<LogEntry> {
         // only relevant to a developer of the app.
         INTERNAL("Internal event", CategoryType.INTERNAL),
         SERVICE_REGISTERING("Service registered", CategoryType.INTERNAL),
-        JAVADOC_SERVER("Javadoc loading", CategoryType.INTERNAL),
+        JAVADOC_SERVICE("Javadoc loading", CategoryType.INTERNAL),
         RESOURCE_MANAGEMENT("Resource manager", CategoryType.INTERNAL),
         SELECTION_EVENT_TRACING("Selection event", CategoryType.INTERNAL);
 

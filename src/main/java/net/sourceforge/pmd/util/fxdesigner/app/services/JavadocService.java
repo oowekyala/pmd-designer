@@ -1,9 +1,14 @@
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,6 +17,7 @@ import org.apache.commons.io.FilenameUtils;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
+import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 /**
@@ -20,22 +26,19 @@ import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
  *
  * @author Clément Fournier
  */
-public class JavadocService implements ApplicationComponent {
+public class JavadocService implements ApplicationComponent, CloseableService {
 
     private static final Pattern JAVADOC_JAR_PATTERN =
         Pattern.compile("pmd-([-\\w]+)-\\d++\\.\\d++\\.\\d++-SNAPSHOT-javadoc\\.jar$");
 
     private final DesignerRoot designerRoot;
 
-    /**
-     * One directory to store all current javadoc jars.
-     */
+    /** One directory to store the javadoc jars while they're being processed. */
     private final ResourceManager javadocJars;
 
-    /**
-     * One directory for the exploded contents of all registered javadoc jars.
-     */
+    /** One directory for the exploded contents of all registered javadoc jars. */
     private final ResourceManager javadocExploded;
+    private final ScheduledExecutorService executor;
 
     public JavadocService(DesignerRoot designerRoot) {
         this.designerRoot = designerRoot;
@@ -44,14 +47,36 @@ public class JavadocService implements ApplicationComponent {
 
         javadocJars = rootManager.createSubordinate("jars");
         javadocExploded = rootManager.createSubordinate("exploded");
+        executor = Executors.newScheduledThreadPool(1, runnable -> new Thread(runnable, "Javadoc extractor"));
 
-        Thread extractor = new Thread(this::extractDocs);
-        extractor.setName("Javadoc extractor");
-        extractor.setPriority(Thread.MIN_PRIORITY);
-        extractor.start();
+        // schedule the javadoc extraction after the app is done initializing
+        executor.schedule(this::extractAndLog, 10, TimeUnit.SECONDS);
     }
 
-    public void extractDocs() {
+
+    public void extractDocsNow() {
+        executor.schedule(this::extractAndLog, 0, TimeUnit.MILLISECONDS);
+    }
+
+    private void extractAndLog() {
+        long start = System.nanoTime();
+        extractDocsImpl();
+        long end = System.nanoTime();
+        logInternalDebugInfo(() -> "Javadoc extractor report", () -> {
+            ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+            long uptimeMs = ManagementFactory.getRuntimeMXBean().getUptime();
+            long wallclockTime = end - start;
+            long cpuTime = threadMXBean.getCurrentThreadCpuTime();
+            long userTime = threadMXBean.getCurrentThreadUserTime();
+            return "CPU time: " + cpuTime + " ns (" + cpuTime / 1000000 + " ms)\n"
+                + "User time: " + userTime + " ns (" + userTime / 1000000 + " ms)\n"
+                + "Wallclock time: " + wallclockTime + " ns (" + wallclockTime / 1000000 + " ms)\n"
+                + "JVM runtime: " + uptimeMs + " ms \n"
+                ;
+        });
+    }
+
+    private void extractDocsImpl() {
         JavadocExtractor extractor = new JavadocExtractor(designerRoot, javadocExploded);
         // Extract all javadoc jars that are shipped in the fat jar
         // We could add
@@ -64,7 +89,6 @@ public class JavadocService implements ApplicationComponent {
 
         javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE);
     }
-
 
     public Optional<URL> docUrl(Class<? extends Node> clazz) {
         String name = clazz.getName().replace('.', '/') + "";
@@ -100,9 +124,18 @@ public class JavadocService implements ApplicationComponent {
         return unpacked;
     }
 
+    @Override
+    public Category getLogCategory() {
+        return Category.JAVADOC_SERVICE;
+    }
 
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
+    }
+
+    @Override
+    public void close() throws Exception {
+        executor.awaitTermination(5, TimeUnit.SECONDS);
     }
 }

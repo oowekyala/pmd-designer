@@ -8,9 +8,9 @@ import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.NodeSelectionEvent;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
+import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
-import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocExtractor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.ResourceManager;
@@ -80,5 +80,12 @@ public interface DesignerRoot {
      */
     Val<Boolean> isCtrlDownProperty(); // TODO this may also be extracted
 
+
+    /**
+     * Shutdown all registered service components that
+     * implement {@link CloseableService}. Called when
+     * the app exits.
+     */
+    void shutdownServices();
 
 }

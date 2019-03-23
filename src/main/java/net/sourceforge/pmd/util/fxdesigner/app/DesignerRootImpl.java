@@ -12,6 +12,7 @@ import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.util.fxdesigner.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
+import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLoggerImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
@@ -99,5 +100,18 @@ public final class DesignerRootImpl implements DesignerRoot {
     @Override
     public Val<Boolean> isCtrlDownProperty() {
         return isCtrlDown;
+    }
+
+    @Override
+    public void shutdownServices() {
+        services.forEach((descriptor, component) -> {
+            if (component instanceof CloseableService) {
+                try {
+                    ((CloseableService) component).close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 }

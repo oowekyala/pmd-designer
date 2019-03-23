@@ -124,7 +124,7 @@ public class MainDesignerController extends AbstractController {
         openFileMenuItem.setOnAction(e -> onOpenFileClicked());
         openRecentMenu.setOnAction(e -> updateRecentFilesMenu());
         openRecentMenu.setOnShowing(e -> updateRecentFilesMenu());
-        javadocImportMenuItem.setOnAction(e -> getService(DesignerRoot.JAVADOC_SERVER).extractDocs());
+        javadocImportMenuItem.setOnAction(e -> getService(DesignerRoot.JAVADOC_SERVER).extractDocsNow());
         saveMenuItem.setOnAction(e-> getService(DesignerRoot.PERSISTENCE_MANAGER).persistSettings(this));
         fileMenu.setOnShowing(e -> onFileMenuShowing());
         aboutMenuItem.setOnAction(e -> SimplePopups.showAboutPopup(getDesignerRoot()));

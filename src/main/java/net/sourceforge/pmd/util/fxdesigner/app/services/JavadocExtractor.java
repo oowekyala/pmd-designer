@@ -141,7 +141,7 @@ public class JavadocExtractor implements ApplicationComponent {
 
     @Override
     public Category getLogCategory() {
-        return Category.JAVADOC_SERVER;
+        return Category.JAVADOC_SERVICE;
     }
 
     @Override
