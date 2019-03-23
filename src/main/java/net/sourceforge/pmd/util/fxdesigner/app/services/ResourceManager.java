@@ -130,7 +130,7 @@ public class ResourceManager implements ApplicationComponent {
      * path.
      */
     public Optional<Path> getUnpackedFile(String dirRelativePath) {
-        return Optional.of(myManagedDir.resolve(dirRelativePath).toAbsolutePath()).filter(it -> it.toFile().exists());
+        return Optional.of(myManagedDir.resolve(dirRelativePath).toAbsolutePath()).filter(it -> Files.exists(it));
     }
 
     /**

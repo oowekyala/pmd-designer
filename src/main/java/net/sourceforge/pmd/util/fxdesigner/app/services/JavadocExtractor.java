@@ -1,17 +1,13 @@
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -21,66 +17,44 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import net.sourceforge.pmd.lang.Language;
-import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.app.services.ExtractionTask.ExtractionTaskBuilder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 
 /**
  * @author Clément Fournier
  */
-public class LanguageJavadocService implements ApplicationComponent {
+public class JavadocExtractor implements ApplicationComponent {
 
     private static final String RELATIVE_LINK_SELECTOR = "a[href~=(?i)\\.\\..*]";
-    private final Language language;
     private final DesignerRoot designerRoot;
-    private final ResourceManager resourceManager;
-    private CompletableFuture<Boolean> isReady;
+    private final ResourceManager output;
     private static final Pattern EXCLUDED_FILES = Pattern.compile(".*?lang/\\w+/rule/.*|.*-.*.html");
 
-    public LanguageJavadocService(Language language,
-                                  DesignerRoot designerRoot,
-                                  ExtractionTaskBuilder jarExtraction,
-                                  ResourceManager resourceManager) {
+    public JavadocExtractor(DesignerRoot designerRoot,
+                            ResourceManager output) {
 
-        this.language = language;
         this.designerRoot = designerRoot;
-        this.resourceManager = resourceManager;
-
-        isReady = jarExtraction.shouldUnpack(LanguageJavadocService::shouldExtract)
-                               .postProcessing(this::postProcess)
-                               .extractAsync()
-                               .thenApply(nothing -> {
-                                   logInternalDebugInfo(() -> "Done loading javadoc", () -> "");
-                                   return true;
-                               });
+        this.output = output;
 
 
     }
 
-    public Optional<URL> docUrl(Class<? extends Node> clazz, boolean compact) {
-        if (!isReady()) {
-            return Optional.empty();
-        } else {
-
-            String name = clazz.getName().replace('.', '/') + "";
-
-            if (compact) {
-                name = name + "-compact";
-            }
-
-            File htmlFile = resourceManager.getRootManagedDir().resolve(name + ".html").toFile();
-
-            try {
-                return htmlFile.exists() ? Optional.of(htmlFile.toURI().toURL()) : Optional.empty();
-            } catch (MalformedURLException e) {
-                logInternalException(e);
-                return Optional.empty();
-            }
-        }
+    public void extractJar(Path jar) {
+        output.jarExtraction(jar)
+              .shouldUnpack(JavadocExtractor::shouldExtract)
+              .postProcessing(this::postProcess)
+              .extractAsync()
+              .whenComplete((nothing, t) -> logInternalDebugInfo(() -> "Done loading javadoc", () -> ""))
+              .thenRun(() -> {
+                  try {
+                      Files.deleteIfExists(jar);
+                  } catch (IOException e) {
+                      logInternalException(e);
+                  }
+              });
     }
+
 
     private void postProcess(Path path) {
 
@@ -132,7 +106,7 @@ public class LanguageJavadocService implements ApplicationComponent {
             .appendElement("link")
             .attr("rel", "stylesheet")
             .attr("type", "text/css")
-            .attr("href", path.relativize(resourceManager.getRootManagedDir().getParent()).resolve("webview.css").toString());
+            .attr("href", path.relativize(output.getRootManagedDir().getParent()).resolve("webview.css").toString());
 
         html.select("pre.grammar")
             .wrap("<div class='grammar-popup'></div>")
@@ -176,18 +150,6 @@ public class LanguageJavadocService implements ApplicationComponent {
         return !EXCLUDED_FILES.matcher(injar.toString()).matches();
     }
 
-    public void whenReady(Runnable action) {
-        isReady.thenRunAsync(action);
-    }
-
-    public boolean isReady() {
-        try {
-            return isReady.isDone() && isReady.get();
-        } catch (InterruptedException | ExecutionException e) {
-            return false;
-        }
-    }
-
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
@@ -205,6 +167,6 @@ public class LanguageJavadocService implements ApplicationComponent {
 
     @Override
     public String getDebugName() {
-        return "LanguageJavadocServer(" + language.getTerseName() + ")";
+        return "Javadoc extractor";
     }
 }

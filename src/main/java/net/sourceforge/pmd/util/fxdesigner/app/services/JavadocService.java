@@ -1,24 +1,22 @@
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.getSupportedLanguages;
-
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
 
-import net.sourceforge.pmd.lang.Language;
+import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.app.services.ExtractionTask.ExtractionTaskBuilder;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 /**
- * Manages the javadocs for the whole app.
+ * Manages the javadocs for the whole app. Basically, we unpack some
+ * javadoc jars that are found in the shipped javadoc, then we run
  *
  * @author Clément Fournier
  */
@@ -28,7 +26,6 @@ public class JavadocService implements ApplicationComponent {
         Pattern.compile("pmd-([-\\w]+)-\\d++\\.\\d++\\.\\d++-SNAPSHOT-javadoc\\.jar$");
 
     private final DesignerRoot designerRoot;
-    private final Map<Language, LanguageJavadocService> BY_LANG = new HashMap<>();
 
     /**
      * One directory to store all current javadoc jars.
@@ -47,6 +44,8 @@ public class JavadocService implements ApplicationComponent {
 
         javadocJars = rootManager.createSubordinate("jars");
         javadocExploded = rootManager.createSubordinate("exploded");
+        JavadocExtractor extractor = new JavadocExtractor(designerRoot, javadocExploded);
+
 
         // Extract all javadoc jars that are shipped in the fat jar
         // We could add
@@ -54,22 +53,26 @@ public class JavadocService implements ApplicationComponent {
                    .maxDepth(1)
                    .shouldUnpack(this::shouldUnpackFromThisJar)
                    .simpleRename(this::nameCleanup)
-                   .extractAsync()
-                   .thenRun(() -> getSupportedLanguages().forEach(lang -> buildLanguageServer(designerRoot, lang, nameForLanguage(lang.getTerseName()))))
-                   .thenCombine(javadocExploded.extractResource("javadoc/webview.css", "webview.css"), (a, b) -> true);
+                   .postProcessing(extractor::extractJar)
+                   .extractAsync();
 
+        javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE);
     }
 
-    private void buildLanguageServer(DesignerRoot designerRoot, Language lang, String jarName) {
-        javadocJars.getUnpackedFile(jarName)
-                   .ifPresent(jar -> {
-                       // let it unpack in the exploded dir unless the jar is up to date
-                       ExtractionTaskBuilder jarExtraction = javadocExploded.jarExtraction(jar)
-                                                                            .extractUnless(() -> javadocJars.isUpToDate(jar));
-                       LanguageJavadocService langService = new LanguageJavadocService(lang, designerRoot, jarExtraction, javadocExploded);
-                       BY_LANG.put(lang, langService);
-                       langService.whenReady(() -> javadocJars.sign(jar));
-                   });
+
+    public Optional<URL> docUrl(Class<? extends Node> clazz) {
+        String name = clazz.getName().replace('.', '/') + "";
+
+        return javadocExploded.getUnpackedFile(name + ".html")
+                              .map(htmlFile -> {
+                                  try {
+                                      return htmlFile.toUri().toURL();
+                                  } catch (MalformedURLException e) {
+                                      logInternalException(e);
+                                      return null;
+                                  }
+                              });
+
     }
 
     private boolean shouldUnpackFromThisJar(Path inJar, Path laidout) {
@@ -89,10 +92,6 @@ public class JavadocService implements ApplicationComponent {
         }
 
         return unpacked;
-    }
-
-    public Optional<LanguageJavadocService> forLanguage(Language language) {
-        return Optional.ofNullable(BY_LANG.get(language)).filter(LanguageJavadocService::isReady);
     }
 
 

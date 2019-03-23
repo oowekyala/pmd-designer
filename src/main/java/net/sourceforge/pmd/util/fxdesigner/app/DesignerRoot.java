@@ -10,6 +10,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource.NodeSelection
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
+import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocExtractor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.ResourceManager;

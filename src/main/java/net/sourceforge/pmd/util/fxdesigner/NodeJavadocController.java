@@ -4,12 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
-import java.util.Optional;
-
 import org.jsoup.Jsoup;
 import org.reactfx.EventStreams;
 
-import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
@@ -77,12 +74,10 @@ public class NodeJavadocController extends AbstractController implements NodeSel
             return;
         }
 
-        Optional.ofNullable(getGlobalLanguageVersion())
-                .map(LanguageVersion::getLanguage)
-                .flatMap(l -> getService(DesignerRoot.JAVADOC_SERVER).forLanguage(l))
-                .flatMap(server -> server.docUrl(node.getClass(), true))
-                .filter(url -> !url.toString().equals(webView.getEngine().getLocation()))
-                .ifPresent(url -> webView.getEngine().load(url.toString()));
+        getService(DesignerRoot.JAVADOC_SERVER)
+            .docUrl(node.getClass())
+            .filter(url -> !url.toString().equals(webView.getEngine().getLocation()))
+            .ifPresent(url -> webView.getEngine().load(url.toString()));
     }
 
 }
