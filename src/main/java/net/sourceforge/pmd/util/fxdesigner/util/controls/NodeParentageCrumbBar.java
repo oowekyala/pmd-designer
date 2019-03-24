@@ -9,6 +9,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIt
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.asReversed;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.count;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.controlsfx.control.BreadCrumbBar;
@@ -98,16 +99,28 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
 
     // getSelectedCrumb gets the deepest displayed node
 
+    private Node currentSelection;
+    /** Index wrt the rightmost crumb. */
+    private int selectedIdx = -1;
+
 
     /**
      * If the node is already displayed on the crumbbar, only sets the focus on it. Otherwise, sets
      * the node to be the deepest one of the crumb bar. Noop if node is null.
      */
     @Override
-    public void setFocusNode(final Node node, DataHolder options) {
-        if (node == null) {
+    public void setFocusNode(final Node newSelection, DataHolder options) {
+
+        if (newSelection == null) {
+            setSelectedCrumb(null);
             return;
         }
+
+        if (Objects.equals(newSelection, currentSelection)) {
+            return;
+        }
+
+        currentSelection = newSelection;
 
         boolean found = false;
 
@@ -124,6 +137,8 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
         double constantPadding = Double.NaN;
 
 
+        int i = 0;
+        // right to left
         for (javafx.scene.Node button : asReversed(getChildren())) {
             Node n = (Node) ((TreeItem<?>) button.getUserData()).getValue();
             // when recovering from a selection it's impossible that the node be found,
@@ -131,7 +146,7 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
             if (!options.hasData(SELECTION_RECOVERY)) {
                 // set the focus on the one being selected, remove on the others
                 // calling requestFocus would switch the focus from eg the treeview to the crumb bar (unusable)
-                button.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), node.equals(n));
+                button.pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), newSelection.equals(n));
             }
             // update counters
             totalNumChar += ((Labeled) button).getText().length();
@@ -145,20 +160,36 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
                 }
             }
 
-            if (node.equals(n)) {
+            if (newSelection.equals(n)) {
                 found = true;
+                selectedIdx = getChildren().size() - i;
             }
+
+            i++;
         }
 
-
-        if (!found) {
+        if (!found && !options.hasData(SELECTION_RECOVERY) || options.hasData(SELECTION_RECOVERY) && selectedIdx != 0) {
             // Then we reset the deepest node.
 
-            setDeepestNode(node, getWidthEstimator(totalNumChar, totalChildrenWidth, totalNumCrumbs, constantPadding));
+            setDeepestNode(newSelection, getWidthEstimator(totalNumChar, totalChildrenWidth, totalNumCrumbs, constantPadding));
             // set the deepest as focused
             getChildren().get(getChildren().size() - 1)
                          .pseudoClassStateChanged(PseudoClass.getPseudoClass("focused"), true);
+            selectedIdx = 0;
+        } else if (options.hasData(SELECTION_RECOVERY)) {
 
+            Node cur = newSelection;
+            // right to left, update underlying nodes without changing display
+            // this relies on the fact that selection recovery only selects nodes with exactly the same path
+            for (javafx.scene.Node child : asReversed(getChildren())) {
+                if (cur == null) {
+                    break;
+                }
+                @SuppressWarnings("unchecked")
+                TreeItem<Node> userData = (TreeItem<Node>) child.getUserData();
+                userData.setValue(cur);
+                cur = cur.jjtGetParent();
+            }
         }
     }
 
