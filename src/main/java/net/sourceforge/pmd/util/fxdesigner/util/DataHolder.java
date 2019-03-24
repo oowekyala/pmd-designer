@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * @author Clément Fournier
@@ -24,6 +25,11 @@ public final class DataHolder {
     @SuppressWarnings("unchecked")
     public <T> T getData(DataKey<T> key) {
         return (T) data.get(key);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T computeIfAbsent(DataKey<T> key, Supplier<T> value) {
+        return (T) data.computeIfAbsent(key, dataKey -> value.get());
     }
 
     public <T> DataHolder withData(DataKey<T> key, T value) {

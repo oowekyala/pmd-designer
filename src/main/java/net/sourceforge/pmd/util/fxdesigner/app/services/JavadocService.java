@@ -50,7 +50,7 @@ public class JavadocService implements ApplicationComponent, CloseableService {
         executor = Executors.newScheduledThreadPool(1, runnable -> new Thread(runnable, "Javadoc extractor"));
 
         // schedule the javadoc extraction after the app is done initializing
-        executor.schedule(this::extractAndLog, 10, TimeUnit.SECONDS);
+        executor.schedule(this::extractAndLog, 4, TimeUnit.SECONDS);
     }
 
 

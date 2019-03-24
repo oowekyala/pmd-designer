@@ -11,6 +11,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder.DataKey;
 
 
 /**
@@ -29,7 +31,12 @@ public class LogEntry implements Comparable<LogEntry> {
     private final Var<Boolean> wasExamined = Var.newSimpleVar(false);
     private final Var<String> shortMessage = Var.newSimpleVar("");
     private final boolean isTrace;
+    private DataHolder holder = new DataHolder();
 
+
+    public DataHolder getUserMap() {
+        return holder;
+    }
 
     public boolean isWasExamined() {
         return wasExamined.getValue();
@@ -105,12 +112,6 @@ public class LogEntry implements Comparable<LogEntry> {
 
     public static <T> LogEntry serviceRegistered(AppServiceDescriptor<T> descriptor, T service) {
         return new LogEntry(service.toString(), descriptor.toString(), Category.SERVICE_REGISTERING, false);
-    }
-
-    public static LogEntry javadocServiceEntry(ApplicationComponent component, String shortMessage, boolean trace) {
-        return new LogEntry(shortMessage, "in " + component.getDebugName(),
-                            Category.JAVADOC_SERVICE,
-                            trace);
     }
 
     public static LogEntry createInternalDebugEntry(String shortMessage,
