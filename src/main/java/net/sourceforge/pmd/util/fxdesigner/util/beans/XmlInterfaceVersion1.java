@@ -33,6 +33,7 @@ public class XmlInterfaceVersion1 extends XmlInterface {
     private static final String SCHEMA_PROPERTY_ELEMENT = "property";
     private static final String SCHEMA_PROPERTY_NAME = "name";
     private static final String SCHEMA_PROPERTY_TYPE = "type";
+    private static final String SCHEMA_NULL_VALUE_FLAG = "nullValue";
 
 
     public XmlInterfaceVersion1(int revisionNumber) {
@@ -99,7 +100,10 @@ public class XmlInterfaceVersion1 extends XmlInterface {
         }
 
         ConvertUtils.convert(new Object());
-        Object value = ConvertUtils.convert(propertyElement.getTextContent(), type);
+
+        Object value = "true".equals(propertyElement.getAttribute(SCHEMA_NULL_VALUE_FLAG))
+                ? null
+                : ConvertUtils.convert(propertyElement.getTextContent(), type);
 
         owner.addProperty(name, value, type);
     }
@@ -135,11 +139,11 @@ public class XmlInterfaceVersion1 extends XmlInterface {
                 // Even when a built-in converter is available, objects are
                 // still converted with Object::toString which fucks up the
                 // conversion...
-                if (keyValue.getValue() == null) {
-                    //FIXME later
-                    continue;
-                }
-                String value = (String) ConvertUtils.lookup(keyValue.getValue().getClass()).convert(String.class, keyValue.getValue());
+
+                String value = keyValue.getValue() == null
+                               ? "" // dummy, not used
+                               : (String) ConvertUtils.lookup(keyValue.getValue().getClass()).convert(String.class, keyValue.getValue());
+
                 if (value == null) {
                     continue;
                 }
@@ -148,6 +152,9 @@ public class XmlInterfaceVersion1 extends XmlInterface {
                 setting.setAttribute(SCHEMA_PROPERTY_NAME, keyValue.getKey());
                 setting.setAttribute(SCHEMA_PROPERTY_TYPE, node.getSettingsTypes().get(keyValue.getKey()).getCanonicalName());
                 setting.appendChild(parent.getOwnerDocument().createCDATASection(value));
+                if (keyValue.getValue() == null) {
+                    setting.setAttribute(SCHEMA_NULL_VALUE_FLAG, "true");
+                }
                 nodeElement.appendChild(setting);
             }
 
