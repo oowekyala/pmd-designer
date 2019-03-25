@@ -4,8 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
@@ -20,24 +20,15 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil;
 public class OnDiskPersistenceManager implements PersistenceManager {
 
     private final DesignerRoot root;
-    private final Path settingsDir;
-    private final File input;
-    private final File output;
+    private final Path input;
+    private final Path output;
 
-    public OnDiskPersistenceManager(DesignerRoot root,
-                                    Path settingsDir,
-                                    File input,
-                                    File output) {
+    public OnDiskPersistenceManager(DesignerRoot root, Path input, Path output) {
         this.root = root;
-        this.settingsDir = settingsDir;
         this.input = input;
         this.output = output;
     }
 
-    @Override
-    public Path getSettingsDirectory() {
-        return settingsDir;
-    }
 
     @Override
     public DesignerRoot getDesignerRoot() {
@@ -46,11 +37,11 @@ public class OnDiskPersistenceManager implements PersistenceManager {
 
     @Override
     public void restoreSettings(SettingsOwner settingsOwner) {
-        if (input == null || !input.isFile()) {
+        if (input == null || !Files.isRegularFile(input) || !Files.exists(input)) {
             return;
         }
         try {
-            SettingsPersistenceUtil.restoreProperties(settingsOwner, input);
+            SettingsPersistenceUtil.restoreProperties(settingsOwner, input.toFile());
         } catch (Exception e) {
             // shouldn't prevent the app from opening
             // in case the file is corrupted, it will be overwritten on shutdown
@@ -65,7 +56,7 @@ public class OnDiskPersistenceManager implements PersistenceManager {
         }
 
         try {
-            SettingsPersistenceUtil.persistProperties(settingsOwner, output);
+            SettingsPersistenceUtil.persistProperties(settingsOwner, output.toFile());
         } catch (IOException ioe) {
             // nevermind
             ioe.printStackTrace();

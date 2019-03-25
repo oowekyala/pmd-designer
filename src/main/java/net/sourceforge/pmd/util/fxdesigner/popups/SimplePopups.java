@@ -63,7 +63,7 @@ public final class SimplePopups {
             + "Available languages: " + LanguageRegistryUtil.getSupportedLanguages().map(Language::getTerseName).collect(Collectors.toList()) +
             "\n"
             + "Designer version: " + Designer.VERSION + "\n"
-            + "Designer settings dir: " + root.getService(DesignerRoot.PERSISTENCE_MANAGER).getSettingsDirectory()
+            + "Designer settings dir: " + root.getService(DesignerRoot.DISK_MANAGER).getSettingsDirectory()
             + "\n";
 
         textArea.setText(sb);

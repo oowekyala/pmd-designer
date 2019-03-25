@@ -8,7 +8,7 @@
     <option name="PROGRAM_PARAMETERS" value="-v" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="net.sourceforge.pmd.util.fxdesigner.*" />
+        <option name="PATTERN" value="net.sourceforge.pmd.util.fxdesigner.app.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>

@@ -18,6 +18,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import net.sourceforge.pmd.PMDVersion;
 import net.sourceforge.pmd.lang.ast.xpath.Attribute;
+import net.sourceforge.pmd.util.fxdesigner.app.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRootImpl;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;

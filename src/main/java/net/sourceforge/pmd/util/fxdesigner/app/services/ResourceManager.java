@@ -37,8 +37,7 @@ public class ResourceManager implements ApplicationComponent {
     private final Path myManagedDir;
 
 
-    public ResourceManager(Path unpackDir,
-                           DesignerRoot designerRoot) {
+    public ResourceManager(DesignerRoot designerRoot, Path unpackDir) {
         this.designerRoot = designerRoot;
         myManagedDir = unpackDir;
 
@@ -94,14 +93,14 @@ public class ResourceManager implements ApplicationComponent {
      * managed by this dir.
      */
     public ResourceManager createSubordinate(String dirRelativePath) {
-        return new ResourceManager(myManagedDir.resolve(dirRelativePath), getDesignerRoot());
+        return new ResourceManager(getDesignerRoot(), myManagedDir.resolve(dirRelativePath));
     }
 
     /**
      * Creates a manager that manages the same directory.
      */
     public ResourceManager createAlias() {
-        return new ResourceManager(myManagedDir, getDesignerRoot());
+        return new ResourceManager(getDesignerRoot(), myManagedDir);
     }
 
 
@@ -193,7 +192,7 @@ public class ResourceManager implements ApplicationComponent {
     @Override
     public String getDebugName() {
         return "ResourceManager("
-            + getService(DesignerRoot.PERSISTENCE_MANAGER).getSettingsDirectory().relativize(getRootManagedDir())
+            + getService(DesignerRoot.DISK_MANAGER).getSettingsDirectory().relativize(getRootManagedDir())
             + ")";
     }
 

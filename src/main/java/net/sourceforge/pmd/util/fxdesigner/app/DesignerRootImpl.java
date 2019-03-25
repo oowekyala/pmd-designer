@@ -10,17 +10,15 @@ import java.util.Map;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
-import net.sourceforge.pmd.util.fxdesigner.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLoggerImpl;
+import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalDiskManagerImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.app.services.OnDiskPersistenceManager;
-import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
-import net.sourceforge.pmd.util.fxdesigner.app.services.ResourceManager;
 
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -56,14 +54,12 @@ public final class DesignerRootImpl implements DesignerRoot {
         mainStage.addEventHandler(KeyEvent.KEY_RELEASED, e -> isCtrlDown.setValue(
             e.isControlDown() && e.getCode() == KeyCode.CONTROL));
 
-        PersistenceManager manager = new OnDiskPersistenceManager(this,
-                                                                  params.getSettingsDirectory(),
-                                                                  params.getPersistedInputFile(),
-                                                                  params.getPersistedOutputFile());
+        GlobalDiskManagerImpl diskManager = new GlobalDiskManagerImpl(this, params.getSettingsDirectory());
+        registerService(DISK_MANAGER, diskManager);
 
-        registerService(PERSISTENCE_MANAGER, manager);
-        registerService(GLOBAL_RESOURCE_MANAGER,
-                        new ResourceManager(manager.getSettingsDirectory().resolve("resources"), this));
+        params.processDefaults(diskManager.defaultAppStateFile());
+
+        registerService(PERSISTENCE_MANAGER, new OnDiskPersistenceManager(this, params.getPersistedInputFile(), params.getPersistedOutputFile()));
         registerService(JAVADOC_SERVER, new JavadocService(this));
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
         registerService(APP_STATE_HOLDER, new GlobalStateHolderImpl());

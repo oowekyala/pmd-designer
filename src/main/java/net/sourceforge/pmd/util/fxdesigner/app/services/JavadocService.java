@@ -43,7 +43,7 @@ public class JavadocService implements ApplicationComponent, CloseableService {
     public JavadocService(DesignerRoot designerRoot) {
         this.designerRoot = designerRoot;
 
-        ResourceManager rootManager = getService(DesignerRoot.GLOBAL_RESOURCE_MANAGER).createSubordinate("javadocs");
+        ResourceManager rootManager = getService(DesignerRoot.DISK_MANAGER).getRootResourcesManager().createSubordinate("javadocs");
 
         javadocJars = rootManager.createSubordinate("jars");
         javadocExploded = rootManager.createSubordinate("exploded");

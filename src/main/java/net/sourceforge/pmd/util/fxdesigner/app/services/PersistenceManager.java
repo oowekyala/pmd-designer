@@ -4,8 +4,6 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
-import java.nio.file.Path;
-
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 
@@ -16,14 +14,6 @@ import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
  * @author Clément Fournier
  */
 public interface PersistenceManager extends ApplicationComponent {
-
-    /**
-     * Gets the main settings directory of the app. This directory
-     * contains all {@linkplain ResourceManager resource directories},
-     * the files containing the user-specific settings, etc. By default
-     * it's somewhere in {@code ${user.home}/.pmd}.
-     */
-    Path getSettingsDirectory();
 
 
     /**
