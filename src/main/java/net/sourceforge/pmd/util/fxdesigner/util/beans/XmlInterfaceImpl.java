@@ -6,23 +6,27 @@ package net.sourceforge.pmd.util.fxdesigner.util.beans;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
 
-import org.apache.commons.beanutils.ConvertUtils;
 import org.apache.commons.lang3.ClassUtils;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import net.sourceforge.pmd.util.fxdesigner.util.beans.converters.Serializer;
+import net.sourceforge.pmd.util.fxdesigner.util.beans.converters.SerializerRegistrar;
+
 
 /**
- * V0, really.
+ * Implementation of {@link XmlInterface}.
  *
  * @author Clément Fournier
  * @since 6.1.0
+ * @since 6.14.0 (V2, no beanutils)
  */
-public class XmlInterfaceVersion1 extends XmlInterface {
+public class XmlInterfaceImpl extends XmlInterface {
 
     private static final Logger LOGGER = Logger.getLogger(XmlInterface.class.getName());
 
@@ -32,11 +36,11 @@ public class XmlInterfaceVersion1 extends XmlInterface {
     private static final String SCHEMA_NODE_CLASS_ATTRIBUTE = "class";
     private static final String SCHEMA_PROPERTY_ELEMENT = "property";
     private static final String SCHEMA_PROPERTY_NAME = "name";
+    private static final String SCHEMA_PROPERTY_VALUE = "value";
     private static final String SCHEMA_PROPERTY_TYPE = "type";
-    private static final String SCHEMA_NULL_VALUE_FLAG = "nullValue";
 
 
-    public XmlInterfaceVersion1(int revisionNumber) {
+    XmlInterfaceImpl(int revisionNumber) {
         super(revisionNumber);
     }
 
@@ -99,11 +103,9 @@ public class XmlInterfaceVersion1 extends XmlInterface {
             return;
         }
 
-        ConvertUtils.convert(new Object());
-
-        Object value = "true".equals(propertyElement.getAttribute(SCHEMA_NULL_VALUE_FLAG))
-                ? null
-                : ConvertUtils.convert(propertyElement.getTextContent(), type);
+        Object value = SerializerRegistrar.getInstance()
+                                          .getSerializer(type)
+                                          .fromXml(getChildrenByTagName(propertyElement, SCHEMA_PROPERTY_VALUE).get(0));
 
         owner.addProperty(name, value, type);
     }
@@ -132,29 +134,24 @@ public class XmlInterfaceVersion1 extends XmlInterface {
             Element nodeElement = parent.getOwnerDocument().createElement(SCHEMA_NODE_ELEMENT);
             nodeElement.setAttribute(SCHEMA_NODE_CLASS_ATTRIBUTE, node.getNodeType().getCanonicalName());
 
+            Map<String, Class<?>> settingsTypes = node.getSettingsTypes();
+
             for (Entry<String, Object> keyValue : node.getSettingsValues().entrySet()) {
-                // I don't think the API is intended to be used like that
-                // but ConvertUtils wouldn't use the convertToString methods
-                // defined in the converters otherwise.
-                // Even when a built-in converter is available, objects are
-                // still converted with Object::toString which fucks up the
-                // conversion...
 
-                String value = keyValue.getValue() == null
-                               ? "" // dummy, not used
-                               : (String) ConvertUtils.lookup(keyValue.getValue().getClass()).convert(String.class, keyValue.getValue());
+                Class<?> propertyType = settingsTypes.get(keyValue.getKey());
+                @SuppressWarnings("unchecked")
+                Serializer<Object> serializer = (Serializer<Object>) SerializerRegistrar.getInstance().getSerializer(propertyType);
 
-                if (value == null) {
-                    continue;
+                if (serializer == null) {
+                    throw new IllegalStateException("No serializer registered for type " + propertyType);
                 }
+
 
                 Element setting = parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_ELEMENT);
                 setting.setAttribute(SCHEMA_PROPERTY_NAME, keyValue.getKey());
-                setting.setAttribute(SCHEMA_PROPERTY_TYPE, node.getSettingsTypes().get(keyValue.getKey()).getCanonicalName());
-                setting.appendChild(parent.getOwnerDocument().createCDATASection(value));
-                if (keyValue.getValue() == null) {
-                    setting.setAttribute(SCHEMA_NULL_VALUE_FLAG, "true");
-                }
+                setting.setAttribute(SCHEMA_PROPERTY_TYPE, propertyType.getCanonicalName());
+                Element valueElt = serializer.toXml(keyValue.getValue(), () -> parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_VALUE));
+                setting.appendChild(valueElt);
                 nodeElement.appendChild(setting);
             }
 

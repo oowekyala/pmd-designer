@@ -57,9 +57,9 @@ public class OnDiskPersistenceManager implements PersistenceManager {
 
         try {
             SettingsPersistenceUtil.persistProperties(settingsOwner, output.toFile());
-        } catch (IOException ioe) {
+        } catch (Exception e) {
             // nevermind
-            ioe.printStackTrace();
+            e.printStackTrace();
         }
     }
 }

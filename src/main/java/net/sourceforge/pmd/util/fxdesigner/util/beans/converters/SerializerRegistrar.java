@@ -13,13 +13,23 @@ import java.util.function.Function;
 /**
  * @author Clément Fournier
  */
-public class SerializationBean {
+public class SerializerRegistrar {
 
+
+    private static final SerializerRegistrar INSTANCE = new SerializerRegistrar();
 
     private final Map<Class<?>, Serializer<?>> converters = new WeakHashMap<>();
 
-    private SerializationBean() {
+    private SerializerRegistrar() {
         registerStandard();
+    }
+
+    public final <T, U> void registerMapped(Class<T> toRegister, Class<U> existing,
+                                            Function<U, T> fromU, Function<T, U> toU) {
+        if (converters.get(existing) == null) {
+            throw new IllegalStateException("No existing converter for " + existing);
+        }
+        register(getSerializer(existing).map(fromU, toU), toRegister);
     }
 
     private void registerStandard() {
@@ -58,10 +68,16 @@ public class SerializationBean {
         }
     }
 
+
     public final <T> Serializer<T> getSerializer(Class<T> type) {
         @SuppressWarnings("unchecked")
         Serializer<T> t = (Serializer<T>) converters.get(type);
         return t;
+    }
+
+
+    public static SerializerRegistrar getInstance() {
+        return INSTANCE;
     }
 
 
