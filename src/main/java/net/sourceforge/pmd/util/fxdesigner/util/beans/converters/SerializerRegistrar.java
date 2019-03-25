@@ -3,12 +3,20 @@ package net.sourceforge.pmd.util.fxdesigner.util.beans.converters;
 import static net.sourceforge.pmd.util.fxdesigner.util.beans.converters.Serializer.stringConversion;
 
 import java.io.File;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * @author Clément Fournier
@@ -76,9 +84,41 @@ public class SerializerRegistrar {
     }
 
 
+    @SuppressWarnings("unchecked")
+    public final Serializer<Object> getSerializer(Type genericType) {
+        if (genericType instanceof Class) {
+            return getSerializer((Class) genericType);
+        } else if (genericType instanceof ParameterizedType) {
+            Type rawType = ((ParameterizedType) genericType).getRawType();
+
+
+            Type[] actualTypeArguments = ((ParameterizedType) genericType).getActualTypeArguments();
+
+            Supplier<Collection<Object>> emptyCollSupplier = null;
+            if (rawType instanceof Class && Collection.class.isAssignableFrom(((Class) rawType))) {
+                if (List.class.isAssignableFrom(((Class) rawType))) {
+                    emptyCollSupplier = ArrayList::new;
+                } else if (Set.class.isAssignableFrom(((Class) rawType))) {
+                    emptyCollSupplier = HashSet::new;
+                }
+            }
+
+            if (actualTypeArguments.length == 1 && emptyCollSupplier != null) {
+                Serializer componentSerializer = getSerializer(actualTypeArguments[0]);
+                if (componentSerializer != null) {
+                    return (Serializer<Object>) componentSerializer.<Collection<Object>>toSeq(emptyCollSupplier);
+                }
+            }
+
+            return getSerializer((Class) rawType);
+        }
+
+        return null;
+    }
+
+
     public static SerializerRegistrar getInstance() {
         return INSTANCE;
     }
-
 
 }

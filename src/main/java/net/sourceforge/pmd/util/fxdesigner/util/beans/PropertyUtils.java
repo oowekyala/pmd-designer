@@ -6,12 +6,19 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.TypeUtils;
 
 /**
  * @author Clément Fournier
@@ -53,5 +60,45 @@ public class PropertyUtils {
         }
         Method getter = descriptor.getReadMethod();
         return getter.invoke(target);
+    }
+
+
+    private static final Pattern PARAM_TYPE_MATCHER = Pattern.compile("(\\w+(?:\\.\\w+)*)(<([^,]*)>)?((?:\\[])*)");
+
+    /**
+     * Parses a string into a type. Returns null if it doesn't succeed.
+     * Only supports parameterized types with at most one type argument.
+     * Doesn't support wildcard types.
+     */
+    public static Type parse(String t) {
+        Matcher matcher = PARAM_TYPE_MATCHER.matcher(t.replaceAll("\\s+", ""));
+        if (matcher.matches()) {
+            String raw = matcher.group(1);
+            Type result;
+            try {
+                result = ClassUtils.getClass(raw);
+            } catch (ClassNotFoundException e) {
+                return null;
+            }
+
+            String param = matcher.group(3);
+            if (StringUtils.isNotBlank(param)) {
+                Type paramType = parse(param);
+                if (paramType != null) {
+                    result = TypeUtils.parameterize((Class) result, paramType);
+                }
+            }
+
+            String arrayDims = matcher.group(4);
+            if (StringUtils.isNotBlank(arrayDims)) {
+                int dimensions = StringUtils.countMatches(arrayDims, '[');
+                while (dimensions-- > 0) {
+                    result = TypeUtils.genericArrayType(result);
+                }
+            }
+
+            return result;
+        }
+        return null;
     }
 }

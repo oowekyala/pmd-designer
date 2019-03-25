@@ -16,6 +16,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 
+import javafx.application.Platform;
 import javafx.scene.control.Control;
 import javafx.stage.Stage;
 
@@ -149,11 +150,11 @@ public interface ApplicationComponent {
     /** Logs an exception that occurred somewhere in the app logic. */
     default void logInternalDebugInfo(Supplier<String> shortMessage, Supplier<String> details, boolean trace) {
         if (isDeveloperMode()) {
-            getLogger().logEvent(LogEntry.createInternalDebugEntry(shortMessage.get(),
-                                                                   details.get(),
-                                                                   this,
-                                                                   getLogCategory(),
-                                                                   trace));
+            Platform.runLater(() -> getLogger().logEvent(LogEntry.createInternalDebugEntry(shortMessage.get(),
+                                                                                           details.get(),
+                                                                                           this,
+                                                                                           getLogCategory(),
+                                                                                           trace)));
         }
     }
 

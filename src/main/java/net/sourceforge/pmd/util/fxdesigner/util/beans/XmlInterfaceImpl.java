@@ -4,13 +4,13 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.beans;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang3.ClassUtils;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -95,11 +95,9 @@ public class XmlInterfaceImpl extends XmlInterface {
     private void parseSingleProperty(Element propertyElement, SimpleBeanModelNode owner) {
         String typeName = propertyElement.getAttribute(SCHEMA_PROPERTY_TYPE);
         String name = propertyElement.getAttribute(SCHEMA_PROPERTY_NAME);
-        Class<?> type;
-        try {
-            type = ClassUtils.getClass(typeName);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+        Type type = PropertyUtils.parse(typeName);
+        if (type == null) {
+            System.out.println("Unable to parse " + typeName);
             return;
         }
 
@@ -134,11 +132,11 @@ public class XmlInterfaceImpl extends XmlInterface {
             Element nodeElement = parent.getOwnerDocument().createElement(SCHEMA_NODE_ELEMENT);
             nodeElement.setAttribute(SCHEMA_NODE_CLASS_ATTRIBUTE, node.getNodeType().getCanonicalName());
 
-            Map<String, Class<?>> settingsTypes = node.getSettingsTypes();
+            Map<String, Type> settingsTypes = node.getSettingsTypes();
 
             for (Entry<String, Object> keyValue : node.getSettingsValues().entrySet()) {
 
-                Class<?> propertyType = settingsTypes.get(keyValue.getKey());
+                Type propertyType = settingsTypes.get(keyValue.getKey());
                 @SuppressWarnings("unchecked")
                 Serializer<Object> serializer = (Serializer<Object>) SerializerRegistrar.getInstance().getSerializer(propertyType);
 
@@ -149,7 +147,7 @@ public class XmlInterfaceImpl extends XmlInterface {
 
                 Element setting = parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_ELEMENT);
                 setting.setAttribute(SCHEMA_PROPERTY_NAME, keyValue.getKey());
-                setting.setAttribute(SCHEMA_PROPERTY_TYPE, propertyType.getCanonicalName());
+                setting.setAttribute(SCHEMA_PROPERTY_TYPE, propertyType.getTypeName());
                 Element valueElt = serializer.toXml(keyValue.getValue(), () -> parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_VALUE));
                 setting.appendChild(valueElt);
                 nodeElement.appendChild(setting);

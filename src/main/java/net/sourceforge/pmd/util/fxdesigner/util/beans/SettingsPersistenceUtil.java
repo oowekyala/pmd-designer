@@ -24,6 +24,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
@@ -139,7 +140,7 @@ public final class SettingsPersistenceUtil {
 
                     node.addChild(seq);
                 } else if (d.getReadMethod().isAnnotationPresent(PersistentProperty.class)) {
-                    node.addProperty(d.getName(), d.getReadMethod().invoke(root), d.getPropertyType());
+                    node.addProperty(d.getName(), d.getReadMethod().invoke(root), d.getReadMethod().getGenericReturnType());
                 }
             } catch (IllegalAccessException | InvocationTargetException e) {
                 e.printStackTrace();
