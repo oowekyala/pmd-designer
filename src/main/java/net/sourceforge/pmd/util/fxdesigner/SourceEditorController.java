@@ -14,6 +14,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewir
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.reactfx.EventStreams;
 import org.reactfx.value.Val;
@@ -38,6 +40,7 @@ import net.sourceforge.pmd.util.fxdesigner.model.ASTManager;
 import net.sourceforge.pmd.util.fxdesigner.model.ParseAbortedException;
 import net.sourceforge.pmd.util.fxdesigner.popups.AuxclasspathSetupController;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeEditionCodeArea;
@@ -149,23 +152,7 @@ public class SourceEditorController extends AbstractController {
 
         // default text, will be overwritten by settings restore
         // TODO this doesn't handle the case where java is not on the classpath
-//        setText("class Foo {\n"
-//                    + "\n"
-//                    + "    /*\n"
-//                    + "        Welcome to the PMD Rule designer :)\n"
-//                    + "\n"
-//                    + "        Type some code in this area\n"
-//                    + "        \n"
-//                    + "        On the right, the Abstract Syntax Tree is displayed\n"
-//                    + "        On the left, you can examine the XPath attributes of\n"
-//                    + "        the nodes you select\n"
-//                    + "        \n"
-//                    + "        You can set the language you'd like to work in with\n"
-//                    + "        the cog icon above this code area\n"
-//                    + "     */\n"
-//                    + "\n"
-//                    + "    int i = 0;\n"
-//                    + "}");
+        setText(getDefaultText());
 
 
         astManager.compilationUnitProperty().values().emitBothOnEach(oldAstManager.compilationUnitProperty().values())
@@ -187,6 +174,32 @@ public class SourceEditorController extends AbstractController {
         EventStreams.valuesOf(highlightRemovedOldNodesToggle.selectedProperty())
                     .subscribe(on -> oldAstTreeView.setAdditionalStyleClasses(on ? SourceEditorController::additionalStyleClasses : null));
 
+    }
+
+
+    private String getDefaultText() {
+        try {
+            return IOUtils.resourceToString(ResourceUtil.resolveResource("placeholders/editor.java"), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "class Foo {\n"
+                + "\n"
+                + "    /*\n"
+                + "        Welcome to the PMD Rule designer :)\n"
+                + "\n"
+                + "        Type some code in this area\n"
+                + "        \n"
+                + "        On the right, the Abstract Syntax Tree is displayed\n"
+                + "        On the left, you can examine the XPath attributes of\n"
+                + "        the nodes you select\n"
+                + "        \n"
+                + "        You can set the language you'd like to work in with\n"
+                + "        the cog icon above this code area\n"
+                + "     */\n"
+                + "\n"
+                + "    int i = 0;\n"
+                + "}";
+        }
     }
 
     private static Collection<String> additionalStyleClasses(Node n) {
