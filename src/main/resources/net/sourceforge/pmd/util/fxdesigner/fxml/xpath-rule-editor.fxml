@@ -102,16 +102,9 @@
                                 </Button>
                                 <Separator orientation="VERTICAL" />
                                 <Label fx:id="languageLabel" />
-                                <ToggleButton fx:id="syncLanguageToggle"
-                                              selected="true"
-                                              styleClass="icon-button"
+                                <ToggleButton fx:id="oldJavaToggle"
+                                              text="Old Java?"
                                               mnemonicParsing="false">
-                                    <tooltip>
-                                        <Tooltip text="Synchronize language with editor" />
-                                    </tooltip>
-                                    <graphic>
-                                        <FontIcon iconLiteral="fas-sync" />
-                                    </graphic>
                                 </ToggleButton>
                             </toolbarItems>
                             <content>

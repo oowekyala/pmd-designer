@@ -4,6 +4,10 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util;
 
+import static net.sourceforge.pmd.lang.LanguageRegistry.findAllVersions;
+import static net.sourceforge.pmd.lang.LanguageRegistry.findLanguageByTerseName;
+import static net.sourceforge.pmd.lang.LanguageRegistry.getDefaultLanguage;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
@@ -32,7 +38,7 @@ public final class LanguageRegistryUtil {
     }
 
     public static LanguageVersion defaultLanguageVersion() {
-        Language defaultLanguage = LanguageRegistry.getDefaultLanguage();
+        Language defaultLanguage = getDefaultLanguage();
         return defaultLanguage == null ? null : defaultLanguage.getDefaultVersion();
     }
 
@@ -62,7 +68,7 @@ public final class LanguageRegistryUtil {
     public static synchronized List<LanguageVersion> getSupportedLanguageVersions() {
         if (supportedLanguageVersions == null) {
             List<LanguageVersion> languageVersions = new ArrayList<>();
-            for (LanguageVersion languageVersion : LanguageRegistry.findAllVersions()) {
+            for (LanguageVersion languageVersion : findAllVersions()) {
                 if (languageVersion.getLanguage().getTerseName().equals("oldjava")) {
                     // FORBID explicit old java selection
                     continue;
@@ -86,4 +92,21 @@ public final class LanguageRegistryUtil {
                                       .findFirst()
                                       .get();
     }
+
+    public static Val<LanguageVersion> mapNewJavaToOld(Val<LanguageVersion> newJavaVer) {
+        return newJavaVer.map(LanguageRegistryUtil::mapNewJavaToOld);
+    }
+
+    public static Val<Language> oldJavaLangProperty(Val<Boolean> useOld) {
+        return useOld.map(old -> old ? findLanguageByTerseName("oldjava") : findLanguageByTerseName("java"));
+    }
+
+    public static LanguageVersion mapNewJavaToOld(LanguageVersion newJavaVer) {
+        return Optional.of(newJavaVer)
+                       .map(LanguageVersion::getTerseName)
+                       .map(it -> it.replace("java", "oldjava"))
+                       .map(LanguageRegistry::findLanguageVersionByTerseName)
+                       .get();
+    }
+
 }

@@ -4,12 +4,16 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
+import java.util.List;
+
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
+
+import javafx.collections.ObservableMap;
 
 /**
  * Logs events. Stores the whole log in case no view was open.
@@ -19,11 +23,12 @@ import net.sourceforge.pmd.lang.ast.Node;
  */
 public interface GlobalStateHolder {
 
-    // Those are here to search for write-access usages more easily
-    Var<Node> writableGlobalCompilationUnitProperty();
-
 
     Var<LanguageVersion> writeableGlobalLanguageVersionProperty();
+
+
+    // Those are here to search for write-access usages more easily
+    Var<Node> writableGlobalCompilationUnitProperty();
 
 
     /**
@@ -32,6 +37,15 @@ public interface GlobalStateHolder {
      */
     default Val<Node> globalCompilationUnitProperty() {
         return writableGlobalCompilationUnitProperty();
+    }
+
+    // CUSTOM
+    Var<Node> writableGlobalOldCompilationUnitProperty();
+
+
+    // CUSTOM
+    default Val<Node> globalOldCompilationUnitProperty() {
+        return writableGlobalOldCompilationUnitProperty();
     }
 
 

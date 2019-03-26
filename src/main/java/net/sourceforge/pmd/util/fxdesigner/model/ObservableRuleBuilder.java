@@ -62,6 +62,7 @@ public class ObservableRuleBuilder implements SettingsOwner {
     }
 
 
+    @PersistentProperty // CUSTOM?
     public Language getLanguage() {
         return language.getValue();
     }

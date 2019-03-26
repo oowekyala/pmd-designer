@@ -8,7 +8,6 @@ package net.sourceforge.pmd.util.fxdesigner;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,7 +20,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.controlsfx.validation.ValidationSupport;
 import org.controlsfx.validation.Validator;
@@ -34,6 +32,7 @@ import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.Language;
+import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
@@ -49,7 +48,6 @@ import net.sourceforge.pmd.util.fxdesigner.popups.ExportXPathWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.TextAwareNodeWrapper;
 import net.sourceforge.pmd.util.fxdesigner.util.autocomplete.CompletionResultSource;
@@ -130,7 +128,8 @@ public final class XPathRuleEditorController extends AbstractController implemen
     @FXML
     private Label languageLabel;
     @FXML
-    private ToggleButton syncLanguageToggle;
+    // CUSTOM
+    private ToggleButton oldJavaToggle;
 
     public XPathRuleEditorController(DesignerRoot root) {
         this(root, new ObservableXPathRuleBuilder());
@@ -171,18 +170,8 @@ public final class XPathRuleEditorController extends AbstractController implemen
 
         violationsTitledPane.titleProperty().bind(currentResults.map(List::size).map(n -> "Matched nodes (" + n + ")"));
 
-        getRuleBuilder().setXpathExpression(getDefaultText());
     }
 
-
-    private String getDefaultText() {
-        try {
-            return IOUtils.resourceToString(ResourceUtil.resolveResource("placeholders/xpath.xpath"), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
-        }
-    }
 
     private void initialiseVersionSelection() {
         ToggleGroup xpathVersionToggleGroup = new ToggleGroup();
@@ -256,25 +245,22 @@ public final class XPathRuleEditorController extends AbstractController implemen
         Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
 
-        getGlobalState().globalLanguageProperty()
-                        .changes()
-                        .conditionOn(syncLanguageToggle.selectedProperty())
-                        .subscribe(ch -> getRuleBuilder().setLanguage(ch.getNewValue()));
 
-        EventStreams.changesOf(syncLanguageToggle.selectedProperty())
-                    .subscribe(ch -> {
-                        if (ch.getNewValue()) {
-                            getRuleBuilder().setLanguage(getGlobalState().globalLanguageProperty()
-                                                                         .getOrElse(LanguageRegistryUtil.defaultLanguageVersion().getLanguage()));
-                        }
-                    });
+        // CUSTOM
+        EventStreams.changesOf(oldJavaToggle.selectedProperty())
+                    .subscribe(
+                        ch -> getRuleBuilder().setLanguage(
+                            LanguageRegistry.findLanguageByTerseName(ch.getNewValue() ? "oldjava" : "java")
+                        )
+                    );
     }
 
     // Binds the underlying rule parameters to the mediator UI, disconnecting it from the wizard if need be
     private void bindToParent() {
-        if (syncLanguageToggle.isSelected()) {
-            DesignerUtil.rewire(getRuleBuilder().languageProperty(), Val.map(getGlobalState().globalLanguageVersionProperty(),
-                                                                             LanguageVersion::getLanguage));
+        if (oldJavaToggle.isSelected()) {
+            // CUSTOM
+            DesignerUtil.rewire(getRuleBuilder().languageProperty(),
+                                LanguageRegistryUtil.oldJavaLangProperty(ReactfxUtil.booleanVar(oldJavaToggle.selectedProperty())));
         }
 
         ReactfxUtil.rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
@@ -315,7 +301,11 @@ public final class XPathRuleEditorController extends AbstractController implemen
                 return;
             }
 
-            Node compilationUnit = getGlobalState().globalCompilationUnitProperty().getValue();
+
+            Node compilationUnit = oldJavaToggle.isSelected() // CUSTOM
+                                   ? getGlobalState().globalOldCompilationUnitProperty().getValue()
+                                   : getGlobalState().globalCompilationUnitProperty().getValue();
+
             if (compilationUnit == null) {
                 updateResults(false, true, Collections.emptyList(), "Compilation unit is invalid");
                 return;
@@ -323,6 +313,10 @@ public final class XPathRuleEditorController extends AbstractController implemen
 
 
             LanguageVersion version = getGlobalState().globalLanguageVersionProperty().getValue();
+
+            if (oldJavaToggle.isSelected()) {
+                version = LanguageRegistryUtil.mapNewJavaToOld(version);
+            }
 
             ObservableList<Node> results
                 = FXCollections.observableArrayList(XPathEvaluator.evaluateQuery(compilationUnit,

@@ -10,6 +10,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.mapToggleGro
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.defaultLanguageVersion;
 import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.getSupportedLanguageVersions;
+import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.mapNewJavaToOld;
 import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewire;
 
 import java.io.File;
@@ -19,7 +20,6 @@ import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -30,7 +30,6 @@ import org.reactfx.EventStreams;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
-import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.ClasspathClassLoader;
@@ -120,12 +119,7 @@ public class SourceEditorController extends AbstractController {
         oldAstTreeView.setDebugName("TreeView (old ast)");
         astTreeView.setDebugName("TreeView (new ast)");
 
-        oldAstManager.languageVersionProperty().bind(
-            astManager.languageVersionProperty()
-                      .map(LanguageVersion::getTerseName)
-                      .map(it -> it.replace("java", "oldjava"))
-                      .map(LanguageRegistry::findLanguageVersionByTerseName)
-        );
+        oldAstManager.languageVersionProperty().bind(mapNewJavaToOld(astManager.languageVersionProperty()));
 
 
         languageVersionProperty().values()
@@ -275,11 +269,17 @@ public class SourceEditorController extends AbstractController {
 
         // Bind global compilation unit to the main ast manager
         Var<Node> globalCompilationUnit = getGlobalState().writableGlobalCompilationUnitProperty();
+        // CUSTOM
+        Var<Node> globalOldCompilationUnit = getGlobalState().writableGlobalOldCompilationUnitProperty();
 
         // veto null events to ignore null compilation units if they're
         // followed by a valid one quickly
         VetoableEventStream.vetoableNull(astManager.compilationUnitProperty().values(), Duration.ofMillis(500))
                            .subscribe(globalCompilationUnit::setValue);
+
+        // CUSTOM
+        VetoableEventStream.vetoableNull(oldAstManager.compilationUnitProperty().values(), Duration.ofMillis(500))
+                           .subscribe(globalOldCompilationUnit::setValue);
 
 
         rewire(astManager.languageVersionProperty(), languageVersionUIProperty);

@@ -65,7 +65,7 @@ public class ObservableXPathRuleBuilder extends ObservableRuleBuilder {
      * Pushes an event every time the rule needs to be re-evaluated.
      */
     public EventStream<?> modificationsTicks() {
-        return nameProperty().values()
+        return languageProperty().values()
                              .or(xpathVersion.values())
                              .or(xpathExpression.values())
                              .or(rulePropertiesProperty().values().flatMap(LiveList::changesOf));
