@@ -4,6 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import java.net.URL;
+import java.util.Optional;
+
 import org.jsoup.Jsoup;
 import org.reactfx.EventStreams;
 
@@ -42,7 +45,7 @@ public class NodeJavadocController extends AbstractController implements NodeSel
 
     @Override
     protected void beforeParentInit() {
-        webView.getEngine().loadContent(noSelectionHtml()); // empty
+        webView.getEngine().loadContent(noSelectionHtml(false)); // empty
         webView.getEngine().setOnAlert(str -> System.out.println(str.getData()));
         webView.getEngine().setOnError(str -> str.getException().printStackTrace());
         initNodeSelectionHandling(getDesignerRoot(), EventStreams.never(), false);
@@ -58,10 +61,10 @@ public class NodeJavadocController extends AbstractController implements NodeSel
 
     }
 
-    private String noSelectionHtml() {
+    private String noSelectionHtml(boolean noDocFound) {
         return Jsoup.parse("<html> </html>")
                     .body()
-                    .text("Select a node to display its Javadoc")
+                    .text(noDocFound ? "No documentation found" : "Select a node to display its Javadoc")
                     .ownerDocument()
                     .wholeText();
     }
@@ -70,14 +73,19 @@ public class NodeJavadocController extends AbstractController implements NodeSel
     public void setFocusNode(Node node, DataHolder options) {
 
         if (node == null) {
-            webView.getEngine().loadContent(noSelectionHtml()); // empty
+            webView.getEngine().loadContent(noSelectionHtml(false)); // empty
             return;
         }
 
-        getService(DesignerRoot.JAVADOC_SERVER)
+        Optional<URL> foundJdoc = getService(DesignerRoot.JAVADOC_SERVER)
             .docUrl(node.getClass())
-            .filter(url -> !url.toString().equals(webView.getEngine().getLocation()))
-            .ifPresent(url -> webView.getEngine().load(url.toString()));
+            .filter(url -> !url.toString().equals(webView.getEngine().getLocation()));
+
+        if (foundJdoc.isPresent()) {
+            webView.getEngine().load(foundJdoc.get().toString());
+        } else {
+            webView.getEngine().loadContent(noSelectionHtml(true));
+        }
     }
 
 }
