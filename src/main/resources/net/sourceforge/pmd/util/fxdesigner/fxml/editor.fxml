@@ -25,14 +25,12 @@
         <SplitPane dividerPositions="0.5"
                    prefHeight="400.0"
                    prefWidth="500.0"
-                   styleClass="accent-header"
                    stylesheets="@../css/designer.css">
             <items>
                 <AnchorPane>
                     <children>
                         <ToolbarTitledPane fx:id="editorTitledPane"
                                            collapsible="false"
-                                           styleClass="accent-header,full-size-title"
                                            title="Source Code"
                                            AnchorPane.bottomAnchor="0.0"
                                            AnchorPane.leftAnchor="0.0"
@@ -41,7 +39,7 @@
                             <toolbarItems>
                                 <MenuButton fx:id="languageSelectionMenuButton"
                                             mnemonicParsing="false"
-                                            styleClass="menu-button-no-arrow,icon-button">
+                                            styleClass="no-arrow,icon-button">
                                     <graphic>
                                         <FontIcon iconLiteral="fas-cog" />
                                     </graphic>

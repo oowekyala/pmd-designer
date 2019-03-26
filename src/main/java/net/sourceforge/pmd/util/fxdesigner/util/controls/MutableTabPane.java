@@ -4,8 +4,13 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.*;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URL;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -17,6 +22,7 @@ import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 import javafx.application.Platform;
 import javafx.beans.NamedArg;
@@ -25,17 +31,22 @@ import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.SingleSelectionModel;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.Shape;
 
 
 /**
@@ -113,6 +124,7 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
             HBox.setHgrow(spring, Priority.ALWAYS);
 
             HBox box = new HBox();
+            box.getStylesheets().addAll(resolveResource("css/flat.css"), resolveResource("css/designer.css"));
             // makes the HBox's transparent regions click-through
             // https://stackoverflow.com/questions/16876083/javafx-pass-mouseevents-through-transparent-node-to-children
             box.setPickOnBounds(false);

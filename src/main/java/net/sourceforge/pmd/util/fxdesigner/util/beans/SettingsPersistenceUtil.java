@@ -29,6 +29,7 @@ import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import net.sourceforge.pmd.RulePriority;
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.properties.PropertyTypeId;
@@ -49,6 +50,7 @@ public final class SettingsPersistenceUtil {
         SerializerRegistrar.getInstance().registerMapped(RulePriority.class, Integer.class, RulePriority::valueOf, RulePriority::getPriority);
         SerializerRegistrar.getInstance().registerMapped(PropertyTypeId.class, String.class, PropertyTypeId::lookupMnemonic, PropertyTypeId::getStringId);
         SerializerRegistrar.getInstance().registerMapped(LanguageVersion.class, String.class, LanguageRegistry::findLanguageVersionByTerseName, LanguageVersion::getTerseName);
+        SerializerRegistrar.getInstance().registerMapped(Language.class, String.class, LanguageRegistry::findLanguageByTerseName, Language::getTerseName);
     }
 
 

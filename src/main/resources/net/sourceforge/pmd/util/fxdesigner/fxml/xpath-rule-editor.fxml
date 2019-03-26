@@ -68,7 +68,7 @@
                                 <!-- For some reason setting "text", even if it's not displayed, makes the padding of the icon work properly -->
                                 <MenuButton mnemonicParsing="false"
                                             text="spacer"
-                                            styleClass="menu-button-no-arrow,icon-button"
+                                            styleClass="no-arrow,icon-button"
                                             fx:id="xpathVersionMenuButton">
                                     <graphic>
                                         <FontIcon iconLiteral="fas-cog" />

@@ -245,6 +245,10 @@ public final class XPathRuleEditorController extends AbstractController implemen
         Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
 
+        // CUSTOM
+        if (getRuleBuilder().getLanguage().getTerseName().equals("oldjava")) {
+            oldJavaToggle.setSelected(true);
+        }
 
         // CUSTOM
         EventStreams.changesOf(oldJavaToggle.selectedProperty())

@@ -11,6 +11,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 import javafx.application.Platform;
@@ -44,6 +45,7 @@ public final class ToolbarTitledPane extends TitledPane implements TitleOwner {
     public ToolbarTitledPane() {
 
         getStyleClass().add("tool-bar-title");
+        toolBar.getStylesheets().add(ResourceUtil.resolveResource("css/flat.css"));
 
         // change the default
         setCollapsible(false);
