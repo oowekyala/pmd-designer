@@ -26,47 +26,13 @@ class Foo {
     What would be your "perfect grammar"?
   */
 
-    @SomeAnnot()
-    @SomeAnnot(name = "foo", arr = {@B})
-    @java.lang.Override
-    String myName = "name";
-
-    /*
-       ANNOTATIONS
-       * Turn Annotation into an interface
-       * Remove Name nodes, useless in all cases
-       * Remove MemberValuePairs. MemberValuePair may only occur in
-         NormalAnnotation so that node added no information.
-     */
-    // Wildcard types
-    List<?> abc;
-
-    /*
-      TYPES
-      * ClassOrInterfaceTypes are now left-recursive. They use AmbiguousName
-        too, because some segments need to be disambiguated between package
-        or type name
-      * TypeArgument, WildcardBound and TypeBound are removed, replaced with WildcardType
-        and IntersectionType
-    */
-    List<? extends B> abc;
-    List<? super B> abc;
-    // Array types
-    List<String>[] sss1;
-    List<String> @Foo [] sss2;
-    // the qualifier is ambiguous
-    // pretty easy to classify though (I didn't bother with @SemanticCheck here)
-    java.util.List<String> @Foo [] sss3;
-
-    // Class or interface types
-    java.util.Map.Entry sss5;
-    java.util.Map<String, String>.Entry<String, String> sss6;
-
 
     /*
        EXPRESSIONS
        * Full changelog at the bottom
-     */ {
+     */
+
+    {
         // Literals
 
         long l = 0 + 0l;   // NumericLiteral
@@ -92,8 +58,8 @@ class Foo {
         // ArrayAllocation and ConstructorCall replace AllocationExpression
 
         // ArrayAllocation
-        int[] is = new int[2];
-        is = new int[] {4};
+        int[] is = new int[] {1, 2};
+        is = new int[2];
 
         // ConstructorCall
         me = new Foo();
@@ -133,17 +99,57 @@ class Foo {
         foo(String::new);
     }
 
+
+    /*
+       ANNOTATIONS
+       * Turn Annotation into an interface
+       * Remove Name nodes, useless in all cases
+       * Remove MemberValuePairs. MemberValuePair may only occur in
+         NormalAnnotation so that node added no information.
+     */
+
+    @SomeAnnot()
+    @SomeAnnot(name = "foo", arr = {@B})
+    @java.lang.Override
+    String myName = "name";
+
+
+
+    /*
+      TYPES
+      * ClassOrInterfaceTypes are now left-recursive. They use AmbiguousName
+        too, because some segments need to be disambiguated between package
+        or type name
+      * TypeArgument, WildcardBound and TypeBound are removed, replaced with WildcardType
+        and IntersectionType
+    */
+
+    // Wildcard types
+    List<?> abc;
+    List<? extends B> abc;
+    List<? super B> abc;
+    // Array types
+    List<String>[] sss1;
+    List<String> @Foo [] sss2;
+
+
+    // Class or interface types
+
+    // the qualifier is ambiguous
+    // pretty easy to classify though (I didn't bother with @SemanticCheck here)
+    java.util.List<String> sss3;
+    java.util.Map.Entry sss5;
+    java.util.Map<String, String>.Entry<String, String> sss6;
     // this parses now, but not with the old parser (#1367)
     // java.util.Map.@Foo Entry sss5;
 
-    // This type parameter is an IntersectionType
-    <T extends Foo & Bar> void foo(T t) {}
+    // Intersection types
 
-    // This one is a ClassOrInterfaceType
-    <T extends Foo> void foo(T t) {
+    // This type parameter is an IntersectionType
+    <T extends Foo & Bar> void foo(T t) {
         Object me = null;
 
-        // Intersection types & annotated types
+        // Intersection types in casts
         me = (@B Foo) me;
         me = (@B Foo & Bar) me;
         me = (Foo & Bar) me;
