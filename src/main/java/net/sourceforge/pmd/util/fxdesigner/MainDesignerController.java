@@ -38,7 +38,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
 import javafx.stage.FileChooser;
 
@@ -47,9 +46,6 @@ import javafx.stage.FileChooser;
  * Main controller of the app. Mediator for subdivisions of the UI.
  *
  * @author Clément Fournier
- * @see SourceEditorController
- * @see EventLogController
- * @see XPathPanelController
  * @since 6.0.0
  */
 @SuppressWarnings("PMD.UnusedPrivateField")
@@ -77,10 +73,6 @@ public class MainDesignerController extends AbstractController {
     private Menu fileMenu;
     /* Bottom panel */
     @FXML
-    private TabPane bottomTabPane;
-    @FXML
-    private Tab xpathEditorTab;
-    @FXML
     private SplitPane mainHorizontalSplitPane;
     @FXML
     private Tab metricResultsTab;
@@ -88,7 +80,7 @@ public class MainDesignerController extends AbstractController {
 
     /* Children */
     @FXML
-    private XPathPanelController xpathPanelController;
+    private RuleEditorsController ruleEditorsController;
     @FXML
     private SourceEditorController sourceEditorController;
 
@@ -146,7 +138,7 @@ public class MainDesignerController extends AbstractController {
     protected void afterChildrenInit() {
         updateRecentFilesMenu();
 
-        sourceEditorController.currentRuleResultsProperty().bind(xpathPanelController.currentResultsProperty());
+        sourceEditorController.currentRuleResultsProperty().bind(ruleEditorsController.currentRuleResults());
 
         getGlobalState().writeableGlobalLanguageVersionProperty().bind(sourceEditorController.languageVersionProperty());
 
@@ -247,28 +239,16 @@ public class MainDesignerController extends AbstractController {
     }
 
 
-    @PersistentProperty
-    public int getBottomTabIndex() {
-        return bottomTabPane.getSelectionModel().getSelectedIndex();
-    }
-
-
-    public void setBottomTabIndex(int i) {
-        if (i >= 0 && i < bottomTabPane.getTabs().size()) {
-            bottomTabPane.getSelectionModel().select(i);
-        }
-    }
-
-
     @Override
     public List<AbstractController> getChildren() {
-        return Arrays.asList(xpathPanelController,
+        return Arrays.asList(ruleEditorsController,
                              sourceEditorController,
                              nodeDetailsTabController,
                              metricPaneController,
                              nodeJavadocController,
                              scopesPanelController);
     }
+
 
 
     @Override

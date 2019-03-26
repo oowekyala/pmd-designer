@@ -7,6 +7,7 @@ package net.sourceforge.pmd.util.fxdesigner.app.services;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
+import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.ast.Node;
 
@@ -39,6 +40,11 @@ public interface GlobalStateHolder {
      */
     default Val<LanguageVersion> globalLanguageVersionProperty() {
         return writeableGlobalLanguageVersionProperty();
+    }
+
+
+    default Val<Language> globalLanguageProperty() {
+        return globalLanguageVersionProperty().map(LanguageVersion::getLanguage);
     }
 
 

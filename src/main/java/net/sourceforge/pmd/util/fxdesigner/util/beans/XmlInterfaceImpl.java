@@ -38,6 +38,7 @@ public class XmlInterfaceImpl extends XmlInterface {
     private static final String SCHEMA_PROPERTY_NAME = "name";
     private static final String SCHEMA_PROPERTY_VALUE = "value";
     private static final String SCHEMA_PROPERTY_TYPE = "type";
+    private static final String SCHEMA_NULL_VALUE_FLAG = "nullValue";
 
 
     XmlInterfaceImpl(int revisionNumber) {

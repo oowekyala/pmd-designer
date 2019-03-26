@@ -8,7 +8,6 @@ import java.io.StringReader;
 import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
-import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.LanguageRegistry;
@@ -76,15 +75,16 @@ public class ASTManager implements ApplicationComponent {
     }
 
 
+    public Var<Node> compilationUnitProperty() {
+        return compilationUnit;
+    }
+
+
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
     }
 
-
-    public Val<Node> compilationUnitProperty() {
-        return compilationUnit;
-    }
 
     /**
      * Refreshes the compilation unit given the current parameters of the model.

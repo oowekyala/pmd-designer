@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
@@ -35,6 +36,8 @@ import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.lang.symboltable.Scope;
 import net.sourceforge.pmd.lang.symboltable.ScopedNode;
 
+import javafx.beans.property.Property;
+import javafx.beans.value.ObservableValue;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Toggle;
@@ -159,6 +162,36 @@ public final class DesignerUtil {
                           .stream()
                           .filter(toggle -> toggle.getUserData().equals(data))
                           .findFirst();
+    }
+
+
+    /** Like the other overload, using the setter of the ui property. */
+    public static <T> Subscription rewireInit(Property<T> underlying, Property<T> ui) {
+        return rewireInit(underlying, ui, ui::setValue);
+    }
+
+
+    /**
+     * Binds the underlying property to a source of values (UI property). The UI
+     * property is also initialised using a setter.
+     *
+     * @param underlying The underlying property
+     * @param ui         The property exposed to the user (the one in this wizard)
+     * @param setter     Setter to initialise the UI value
+     * @param <T>        Type of values
+     */
+    public static <T> Subscription rewireInit(Property<T> underlying,
+                                              ObservableValue<? extends T> ui, Consumer<? super T> setter) {
+        setter.accept(underlying.getValue());
+        return rewire(underlying, ui);
+    }
+
+
+    /** Like rewireInit, with no initialisation. */
+    public static <T> Subscription rewire(Property<T> underlying, ObservableValue<? extends T> source) {
+        underlying.unbind();
+        underlying.bind(source); // Bindings are garbage collected after the popup dies
+        return underlying::unbind;
     }
 
 

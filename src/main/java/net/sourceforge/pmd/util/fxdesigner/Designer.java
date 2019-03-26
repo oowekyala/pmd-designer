@@ -4,6 +4,8 @@
 
 package net.sourceforge.pmd.util.fxdesigner;
 
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.controllerFactoryKnowing;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -125,7 +127,7 @@ public class Designer extends Application {
             new ScopesPanelController(owner),
             new NodeDetailPaneController(owner),
             new NodeJavadocController(owner),
-            new XPathPanelController(owner),
+            new RuleEditorsController(owner),
             new SourceEditorController(owner)
         ));
 

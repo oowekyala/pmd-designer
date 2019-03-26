@@ -102,6 +102,7 @@ public class SourceEditorController extends AbstractController {
     private NodeParentageCrumbBar focusNodeParentageCrumbBar;
 
 
+
     private Var<LanguageVersion> languageVersionUIProperty;
 
 
@@ -270,7 +271,7 @@ public class SourceEditorController extends AbstractController {
 
 
     @Override
-    protected void afterParentInit() {
+    public void afterParentInit() {
 
         // Bind global compilation unit to the main ast manager
         Var<Node> globalCompilationUnit = getGlobalState().writableGlobalCompilationUnitProperty();

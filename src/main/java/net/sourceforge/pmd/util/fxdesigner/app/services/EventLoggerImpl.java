@@ -19,12 +19,15 @@ import org.reactfx.EventStream;
 import org.reactfx.EventStreams;
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.collection.LiveList;
+import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.reactfx.VetoableEventStream;
+
+import com.github.oowekyala.rxstring.ReactfxExtensions;
 
 
 /**
@@ -70,20 +73,23 @@ public class EventLoggerImpl implements ApplicationComponent, EventLogger {
     }
 
 
+    /** Number of log entries that were not yet examined by the user. */
+    public Val<Integer> numNewLogEntriesProperty() {
+        return LiveList.sizeOf(ReactfxExtensions.flattenVals(fullLog.map(LogEntry::wasExaminedProperty))
+                                                .filtered(read -> !read));
+    }
+
+
     @Override
     public DesignerRoot getDesignerRoot() {
         return designerRoot;
     }
 
-
-    private static EventStream<LogEntry> deleteOnSignal(EventStream<LogEntry> input, Category normal, Category deleteSignal) {
-        return VetoableEventStream.vetoableFrom(
-            filterOnCategory(input, false, normal, deleteSignal),
-            (maybeVetoable) -> maybeVetoable.getCategory() == normal,
-            (pending, maybeVeto) -> maybeVeto.getCategory() == deleteSignal,
-            (a, b) -> b,
-            PARSE_EXCEPTION_REDUCTION_DELAY
-        );
+    @Override
+    public void logEvent(LogEntry event) {
+        if (event != null) {
+            latestEvent.push(event);
+        }
     }
 
 
@@ -94,16 +100,18 @@ public class EventLoggerImpl implements ApplicationComponent, EventLogger {
         return input.filter(e -> complemented.contains(e.getCategory()));
     }
 
-
-    @Override
-    public void logEvent(LogEntry event) {
-        if (event != null) {
-            latestEvent.push(event);
-        }
-    }
-
     @Override
     public LiveList<LogEntry> getLog() {
         return fullLog;
+    }
+
+    private static EventStream<LogEntry> deleteOnSignal(EventStream<LogEntry> input, Category normal, Category deleteSignal) {
+        return VetoableEventStream.vetoableFrom(
+            filterOnCategory(input, false, normal, deleteSignal),
+            (maybeVetoable) -> maybeVetoable.getCategory() == normal,
+            (pending, maybeVeto) -> maybeVeto.getCategory() == deleteSignal,
+            (a, b) -> b,
+            PARSE_EXCEPTION_REDUCTION_DELAY
+        );
     }
 }

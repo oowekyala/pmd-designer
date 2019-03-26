@@ -12,7 +12,7 @@ import org.reactfx.EventStream;
 import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.util.fxdesigner.XPathPanelController;
+import net.sourceforge.pmd.util.fxdesigner.XPathRuleEditorController;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder.DataKey;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.TextPos2D;
@@ -22,7 +22,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 /**
  * A control or controller that somehow displays nodes in a form that the user can select.
- * When a node is selected by the user (e.g. {@link AstTreeView}, {@link XPathPanelController}, etc),
+ * When a node is selected by the user (e.g. {@link AstTreeView}, {@link XPathRuleEditorController}, etc),
  * the whole UI is synchronized to reflect information about the node. This includes scrolling
  * the TreeView, the editor, etc. To achieve that uniformly, node selection events are forwarded
  * as messages on a {@link MessageChannel}.
