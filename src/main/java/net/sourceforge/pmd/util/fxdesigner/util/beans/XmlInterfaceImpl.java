@@ -102,11 +102,20 @@ public class XmlInterfaceImpl extends XmlInterface {
             return;
         }
 
-        Object value = SerializerRegistrar.getInstance()
-                                          .getSerializer(type)
-                                          .fromXml(getChildrenByTagName(propertyElement, SCHEMA_PROPERTY_VALUE).get(0));
+        try {
 
-        owner.addProperty(name, value, type);
+
+            Serializer<Object> serializer = SerializerRegistrar.getInstance().getSerializer(type);
+            if (serializer == null) {
+                throw new IllegalStateException("Null serializer for type " + typeName);
+            }
+            Object value = serializer.fromXml(getChildrenByTagName(propertyElement, SCHEMA_PROPERTY_VALUE).get(0));
+
+            owner.addProperty(name, value, type);
+        } catch (Exception e) {
+            String message = "Unable to parse property " + name + " for " + typeName;
+            new IllegalStateException(message, e).printStackTrace();
+        }
     }
 
 
@@ -145,11 +154,19 @@ public class XmlInterfaceImpl extends XmlInterface {
                     throw new IllegalStateException("No serializer registered for type " + propertyType);
                 }
 
+                Element valueElt;
+                try {
+                    valueElt = serializer.toXml(keyValue.getValue(), () -> parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_VALUE));
+                } catch (Exception e) {
+                    String message = "Unable to serialize property "
+                        + keyValue.getKey() + " for " + node.getNodeType().getName();
+                    new IllegalStateException(message, e).printStackTrace();
+                    continue;
+                }
 
                 Element setting = parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_ELEMENT);
                 setting.setAttribute(SCHEMA_PROPERTY_NAME, keyValue.getKey());
                 setting.setAttribute(SCHEMA_PROPERTY_TYPE, propertyType.getTypeName());
-                Element valueElt = serializer.toXml(keyValue.getValue(), () -> parent.getOwnerDocument().createElement(SCHEMA_PROPERTY_VALUE));
                 setting.appendChild(valueElt);
                 nodeElement.appendChild(setting);
             }
