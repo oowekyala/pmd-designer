@@ -156,7 +156,7 @@ public class XPathPanelController extends AbstractController implements NodeSele
 
         violationsTitledPane.titleProperty().bind(currentResults.map(List::size).map(n -> "Matched nodes (" + n + ")"));
 
-        xpathExpressionArea.replaceText(getDefaultText());
+        getRuleBuilder().setXpathExpression(getDefaultText());
     }
 
 
