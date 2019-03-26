@@ -39,6 +39,7 @@ import net.sourceforge.pmd.lang.rule.xpath.XPathRuleQuery;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
+import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
@@ -96,7 +97,7 @@ import javafx.stage.StageStyle;
  * @see ExportXPathWizardController
  * @since 6.0.0
  */
-public final class XPathRuleEditorController extends AbstractController implements NodeSelectionSource, TitleOwner {
+public final class XPathRuleEditorController extends AbstractController implements NodeSelectionSource, TitleOwner, CloseableService {
 
     private static final String NO_MATCH_MESSAGE = "No match in text";
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
@@ -146,7 +147,6 @@ public final class XPathRuleEditorController extends AbstractController implemen
 
     @Override
     protected void beforeParentInit() {
-        xpathExpressionArea.setSyntaxHighlighter(new XPathSyntaxHighlighter());
 
         initGenerateXPathFromStackTrace();
         initialiseVersionSelection();
@@ -237,6 +237,11 @@ public final class XPathRuleEditorController extends AbstractController implemen
     }
 
     @Override
+    public void close() {
+        xpathExpressionArea.setSyntaxHighlighter(null);
+    }
+
+    @Override
     public void afterParentInit() {
         bindToParent();
 
@@ -273,6 +278,9 @@ public final class XPathRuleEditorController extends AbstractController implemen
         DesignerUtil.rewireInit(getRuleBuilder().rulePropertiesProperty(),
                                 propertyTableView.rulePropertiesProperty(),
                                 propertyTableView::setRuleProperties);
+
+        xpathExpressionArea.setSyntaxHighlighter(new XPathSyntaxHighlighter());
+
     }
 
     @Override

@@ -4,13 +4,10 @@
 
 package net.sourceforge.pmd.util.fxdesigner.util.controls;
 
-import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.*;
+import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.resolveResource;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.StringReader;
 import java.net.URL;
-import java.util.Base64;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -21,8 +18,8 @@ import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
+import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
 import javafx.application.Platform;
 import javafx.beans.NamedArg;
@@ -31,22 +28,17 @@ import javafx.beans.binding.Bindings;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.SingleSelectionModel;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
-import javafx.scene.shape.SVGPath;
-import javafx.scene.shape.Shape;
 
 
 /**
@@ -269,6 +261,15 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
 
             T realController = loader.getController();
             newTab.setUserData(realController);
+            newTab.setOnClosed(evt -> {
+                if (realController instanceof CloseableService) {
+                    try {
+                        ((CloseableService) realController).close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
             return newTab;
         };
 
