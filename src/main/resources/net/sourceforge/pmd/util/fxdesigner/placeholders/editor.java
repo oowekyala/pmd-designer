@@ -1,29 +1,27 @@
 class Foo {
 
   /*
-	This is a custom designer crafted to diff between the prototype Java grammar
-	for 7.0.0 and the current grammar. You can see both trees to the right.
-	Node selection should be in sync. Also there's a javadoc viewer on the left.
-	(also there's a nicer XPath export wizard but I only include it
+    This is a custom designer crafted to diff between the prototype Java grammar
+    for 7.0.0 and the current grammar. You can see both trees to the right.
+    Node selection should be in sync. Also there's a javadoc viewer on the left.
+    (also there's a nicer XPath export wizard but I only include it
      because that branch fixes some critical performance issues)
 
-	The 6.0.x tree can be color-coded to highlight differences. Key:
-	* Red: removed node. Turned into an interface in the code most of the time.
-	* Yellow: proposed removal, to be thought about
+    The 6.0.x tree can be color-coded to highlight differences. Key:
+    * Red: removed node. Turned into an interface in the code most of the time.
+    * Yellow: proposed removal, to be thought about
 
-	Those are all nodes whose presence doesn't add anything to the tree and
-	which in all cases were worked around in rules. Using interfaces declutters
-	the tree, removes inconsistencies, and makes it look like more of an AST
-	than a *parse tree*.
+    Those are all nodes whose presence doesn't add anything to the tree and
+    which in all cases were worked around in rules. Using interfaces declutters
+    the tree, removes inconsistencies, and makes it look like more of an AST
+    than a *parse tree*.
 
-	I ran some benchmarks to compare the old parser to this one.
-	* Parsing performance is equivalent
-	* ASTs are on average about 60% as big (they're smaller)
-	* Since the AST is more compact, the runtime of a full visitor traversal
-	  is decreased on average by 12%
+    I ran some benchmarks to compare the old parser to this one.
+    * Parsing performance is equivalent
+    * ASTs are on average about 60% as big (they're smaller)
+    * Since the AST is more compact, the runtime of a full visitor traversal
+      is decreased on average by 12%
 
-
-    What would be your "perfect grammar"?
   */
 
 
@@ -64,7 +62,7 @@ class Foo {
         // ConstructorCall
         me = new Foo();
         // qualified constructor call
-        me = me.new Inner();
+        me = me.new Inner().foo();
         // anonymous class
         me = me.new Inner() {
             // qualified this
@@ -97,6 +95,8 @@ class Foo {
         foo(System.out::println);
         // here "String" is unambiguously a type name (bc of "new")
         foo(String::new);
+        // But here, "java.lang" is ambiguous between package or type name
+        foo(java.lang.String::new);
     }
 
 
@@ -106,10 +106,23 @@ class Foo {
        * Remove Name nodes, useless in all cases
        * Remove MemberValuePairs. MemberValuePair may only occur in
          NormalAnnotation so that node added no information.
+       * TBH we could also merge NormalAnnotation, MarkerAnnotation and SingleMemberAnnotation
+         into a single node. It's not very useful to separate them that way. We'd have
+         a single node "Annotation", with the following grammar:
+         Annotation        := "@" <Name #void> [ AnnotationMembers ]
+         AnnotationMembers := "(" (Expression | (MemberValuePair)*) ")"
+           So eg
+           @Foo              ~> Annotation
+           @Foo()            ~> Annotation { AnnotationMembers }
+           @Foo("foo")       ~> Annotation { AnnotationMembers { StringLiteral } }
+           @Foo(value="foo") ~> Annotation { AnnotationMembers { MemberValuePair { StringLiteral } } }
+
+         Wdyt?
      */
 
     @SomeAnnot()
     @SomeAnnot(name = "foo", arr = {@B})
+    @Single("foo")
     @java.lang.Override
     String myName = "name";
 
@@ -172,9 +185,9 @@ Changelog for the Expression grammar
     * ASTAmbiguousName
       * For those names that are *syntactically* ambiguous
       * Most of them aren't semantically ambiguous, even with no auxclasspath, meaning
-	they can be rewritten to a more meaningful node (a VariableReference or FieldAccess).
+        they can be rewritten to a more meaningful node (a VariableReference or FieldAccess).
         The attribute AmbiguousName/@SemanticCheck makes a (very simple) disambiguation
-	    using the current (full of holes) symbol table and other easy to grab stuff:
+        using the current (full of holes) symbol table and other easy to grab stuff:
         * If there's a variable in scope with the name, then it's classified as EXPR
         * Otherwise, if there's a static import with the given name, then it's classified as EXPR
         * Otherwise, if there's an import with the given name, it's classified as TYPE
