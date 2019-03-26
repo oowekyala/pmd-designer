@@ -97,6 +97,20 @@ class Foo {
         foo(String::new);
         // But here, "java.lang" is ambiguous between package or type name
         foo(java.lang.String::new);
+
+        // ShiftExpression
+        // no more RUNSIGNEDSHIFT/RSIGNEDSHIFT
+        int shifted = l >> 2;
+        shifted = shifted >>> 3;
+
+        // UnaryExpression
+        // UnaryExpressionNotPlusMinus is removed, it was an accident of the grammar
+        boolean not = !!true;
+        shifted = -shifted / ~shifted;
+        // should we merge Pre[In|De]crementExpression into UnaryExpression?
+        // they have the same precedence, and there's no counterpart for
+        // PostIncrement & PostDecrement, which makes it look inconsistent
+        shifted = --shifted + shifted--;
     }
 
 
@@ -222,6 +236,7 @@ Changelog for the Expression grammar
     * ASTVariableInitializer
       * Is superseded by ASTExpression, through making ASTArrayInitializer implement ASTExpression.
         This is only logical, they're expressions according to JLS. See deprecation note.
+    * ASTRSIGNEDSHIFT, ASTRUNSIGNEDSHIFT
     * ASTAllocationExpression
       * The concrete node is replaced by ASTConstructorCall and ASTArrayAllocation, though we could make it an interface instead of removing it
 */

@@ -232,6 +232,8 @@ public class SourceEditorController extends AbstractController {
 //        case "TypeBound":
         case "WildcardBound":
         case "ReferenceType":
+        case "RSIGNEDSHIFT":
+        case "RUNSIGNEDSHIFT":
         case "PrimaryPrefix":
         case "PrimarySuffix":
         case "AssignmentOperator":
