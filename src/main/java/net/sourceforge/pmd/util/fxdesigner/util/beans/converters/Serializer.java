@@ -26,6 +26,10 @@ public interface Serializer<T> {
     T fromXml(Element s);
 
 
+    /**
+     * Returns a new serializer that can handle another type {@code <S>},
+     * provided {@code <T>} can be mapped to and from {@code <S>}.
+     */
     default <S> Serializer<S> map(Function<T, S> toS, Function<S, T> fromS) {
         return new Serializer<S>() {
             @Override

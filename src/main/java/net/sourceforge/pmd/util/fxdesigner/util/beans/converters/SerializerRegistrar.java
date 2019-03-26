@@ -18,6 +18,8 @@ import java.util.WeakHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.reflect.Typed;
+
 /**
  * @author Clément Fournier
  */
@@ -26,12 +28,17 @@ public class SerializerRegistrar {
 
     private static final SerializerRegistrar INSTANCE = new SerializerRegistrar();
 
-    private final Map<Class<?>, Serializer<?>> converters = new WeakHashMap<>();
+    private final Map<Type, Serializer<?>> converters = new WeakHashMap<>();
 
-    private SerializerRegistrar() {
+    public SerializerRegistrar() {
         registerStandard();
     }
 
+    /**
+     * Registers a new serializer for type [toRegister], which is based
+     * on an already registered serializer for [existing]. The new serializer
+     * is obtained using {@link Serializer#map(Function, Function)}.
+     */
     public final <T, U> void registerMapped(Class<T> toRegister, Class<U> existing,
                                             Function<U, T> fromU, Function<T, U> toU) {
         if (converters.get(existing) == null) {
@@ -70,12 +77,18 @@ public class SerializerRegistrar {
 
 
     @SafeVarargs
-    public final <T> void register(Serializer<T> serializer, Class<T>... type) {
-        for (Class<T> tClass : type) {
-            converters.put(tClass, serializer);
+    public final <T> void register(Serializer<T> serializer, Typed<T>... type) {
+        for (Typed<T> tClass : type) {
+            converters.put(tClass.getType(), serializer);
         }
     }
 
+    @SafeVarargs
+    public final <T> void register(Serializer<T> serializer, Class<T>... type) {
+        for (Class<T> it : type) {
+            converters.put(it, serializer);
+        }
+    }
 
     public final <T> Serializer<T> getSerializer(Class<T> type) {
         @SuppressWarnings("unchecked")
@@ -83,22 +96,32 @@ public class SerializerRegistrar {
         return t;
     }
 
+    public final <T> Serializer<T> getSerializer(Typed<T> typed) {
+        @SuppressWarnings("unchecked")
+        Serializer<T> serializer = (Serializer<T>) getSerializer(typed.getType());
+        return serializer;
+    }
+
 
     @SuppressWarnings("unchecked")
     public final Serializer<Object> getSerializer(Type genericType) {
+        if (converters.containsKey(genericType)) {
+            return (Serializer<Object>) converters.get(genericType);
+        }
+
         if (genericType instanceof Class) {
             return getSerializer((Class) genericType);
         } else if (genericType instanceof ParameterizedType) {
-            Type rawType = ((ParameterizedType) genericType).getRawType();
+            Class rawType = (Class) ((ParameterizedType) genericType).getRawType();
 
 
             Type[] actualTypeArguments = ((ParameterizedType) genericType).getActualTypeArguments();
 
             Supplier<Collection<Object>> emptyCollSupplier = null;
-            if (rawType instanceof Class && Collection.class.isAssignableFrom(((Class) rawType))) {
-                if (List.class.isAssignableFrom(((Class) rawType))) {
+            if (rawType != null && Collection.class.isAssignableFrom(rawType)) {
+                if (List.class.isAssignableFrom(rawType)) {
                     emptyCollSupplier = ArrayList::new;
-                } else if (Set.class.isAssignableFrom(((Class) rawType))) {
+                } else if (Set.class.isAssignableFrom(rawType)) {
                     emptyCollSupplier = HashSet::new;
                 }
             }
@@ -110,7 +133,7 @@ public class SerializerRegistrar {
                 }
             }
 
-            return getSerializer((Class) rawType);
+            return getSerializer(rawType);
         }
 
         return null;
