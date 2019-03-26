@@ -153,8 +153,8 @@ class Foo {
 
     // Wildcard types
     List<?> abc;
-    List<? extends B> abc;
-    List<? super B> abc;
+    List<? extends B> abc2;
+    List<? super B> abc3;
     // Array types
     List<String>[] sss1;
     List<String> @Foo [] sss2;

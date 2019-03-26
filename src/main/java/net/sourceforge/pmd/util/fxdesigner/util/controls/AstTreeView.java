@@ -111,6 +111,11 @@ public class AstTreeView extends TreeView<Node> implements NodeSelectionSource {
 
         setRoot(root == null ? null : ASTTreeItem.buildRoot(root));
 
+        if (getDebugName().contains("old")) {
+            // prevent the old treeview from shooting back selection recovery events
+            return;
+        }
+
         if (root != null && selectedTreeItem != null && selectedTreeItem.getValue() != null) {
             Node newSelection = findOldNodeInNewAst(selectedTreeItem.getValue(), root).orElse(null);
             if (newSelection != null) {
