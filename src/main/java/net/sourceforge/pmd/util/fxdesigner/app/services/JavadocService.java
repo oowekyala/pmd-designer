@@ -79,15 +79,15 @@ public class JavadocService implements ApplicationComponent, CloseableService {
     private void extractDocsImpl() {
         JavadocExtractor extractor = new JavadocExtractor(designerRoot, javadocExploded);
         // Extract all javadoc jars that are shipped in the fat jar
-        // We could add
         javadocJars.jarExtraction(ResourceUtil.thisJarPathInHost())
                    .maxDepth(1)
                    .shouldUnpack(this::shouldUnpackFromThisJar)
                    .simpleRename(this::nameCleanup)
-                   .postProcessing(extractor::extractJar)
+                   .postProcessing(jar -> extractor.extractJar(jar, javadocJars))
                    .extract();
 
 
+        // extract the frame
         javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE)
                        .thenAccept(dir-> javadocExploded.jarExtraction(dir.resolve("frame.jar")).extract());
     }

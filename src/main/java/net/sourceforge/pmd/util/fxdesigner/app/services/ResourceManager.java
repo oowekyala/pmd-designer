@@ -96,13 +96,6 @@ public class ResourceManager implements ApplicationComponent {
         return new ResourceManager(getDesignerRoot(), myManagedDir.resolve(dirRelativePath));
     }
 
-    /**
-     * Creates a manager that manages the same directory.
-     */
-    public ResourceManager createAlias() {
-        return new ResourceManager(getDesignerRoot(), myManagedDir);
-    }
-
 
     /**
      * Creates a manager that manages a the same directory.
@@ -121,34 +114,43 @@ public class ResourceManager implements ApplicationComponent {
     }
 
     /**
-     * Output a checksum for the file.
+     * Compute a checksum for the file.
      *
-     * @return true if the file was signed successfully
+     * @return The checksum of the file, if it could be computed
      */
-    public boolean sign(Path file) {
-        return signOp(file, false, (target, checksumPath) -> {
+    public Optional<Long> sign(Path file, boolean writeOnDisk) {
+        return signOp(file, Optional.empty(), (target, checksumPath) -> {
             long checksum;
             try {
                 checksum = FileUtils.checksumCRC32(target.toFile());
-                Files.deleteIfExists(checksumPath);
             } catch (IOException e) {
                 e.printStackTrace();
-                return false;
+                return Optional.empty();
             }
 
-            try (DataOutputStream dos = new DataOutputStream(Files.newOutputStream(checksumPath))) {
-                dos.writeLong(checksum);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return false;
+            if (writeOnDisk) {
+                try {
+                    Files.deleteIfExists(checksumPath);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                try (DataOutputStream dos = new DataOutputStream(Files.newOutputStream(checksumPath))) {
+                    dos.writeLong(checksum);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return Optional.of(checksum);
+                }
             }
-            return true;
+
+            logInternalDebugInfo(() -> "File signed", () -> myManagedDir.relativize(file).toString());
+            return Optional.of(checksum);
         });
     }
 
     /**
      * Checks whether the file matches its recorded checksum. Returns false if the
-     * file has no recorded checksum. Use {@link #sign(Path)} to record a checksum.
+     * file has no recorded checksum. Use {@link #sign(Path, boolean)} to record a checksum.
      */
     public boolean isUpToDate(Path path) {
         return signOp(path, false, (target, checksumPath) -> {

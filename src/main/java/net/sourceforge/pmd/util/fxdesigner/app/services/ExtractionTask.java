@@ -299,11 +299,11 @@ public class ExtractionTask {
          * @return A future that is done when all the jar has been processed (including post-processing).
          * Never completes exceptionally, but errors are logged using the {@link #exceptionHandler(BiConsumer)}.
          */
-        public CompletableFuture<Void> extract() {
+        public CompletableFuture<Boolean> extract() {
             if (doExtraction.get()) {
-                return createExtractionTask().exec();
+                return createExtractionTask().exec().thenApply(nothing -> true);
             }
-            return CompletableFuture.completedFuture(null);
+            return CompletableFuture.completedFuture(false);
         }
     }
 }

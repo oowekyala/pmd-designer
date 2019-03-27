@@ -41,13 +41,30 @@ public class JavadocExtractor implements ApplicationComponent {
 
     }
 
-    public void extractJar(Path jar) {
+    /**
+     * Extract a javadoc jar into the output resource manager assigned
+     * to this resource. The [signer] manager is responsible for signing
+     * the jar. Typically, this is the manager managing the directory of
+     * the jar, if it's in a managed directory. No extraction is performed
+     * if it was up to date.
+     *
+     * @param jar    Javadoc jar to extract
+     * @param signer Signer
+     */
+    public void extractJar(Path jar, ResourceManager signer) {
+
         output.jarExtraction(jar)
               .shouldUnpack(JavadocExtractor::shouldExtract)
               .postProcessing(this::postProcess)
+              .extractUnless(() -> signer.isUpToDate(jar))
               .extract()
-              .whenComplete((nothing, t) -> logInternalDebugInfo(() -> "Done loading javadoc", () -> ""))
-              .thenRun(() -> {
+              .whenComplete((extracted, t) -> logInternalDebugInfo(() -> "Extraction done: " + jar.getFileName(),
+                                                                   () -> extracted ? ""
+                                                                                   : "Was up to date, nothing to do"))
+              .thenAccept(extracted -> {
+                  if (extracted) {
+                      signer.sign(jar, true);
+                  }
                   try {
                       Files.deleteIfExists(jar);
                   } catch (IOException e) {
