@@ -80,7 +80,7 @@ public class ResourceManager implements ApplicationComponent {
                 .layoutMapper(p -> myManagedDir.resolve(extractedPathRelativeToThis).resolve(myManagedDir.relativize(p)))
                 .exceptionHandler((p, t) -> logInternalException(t))
                 .extract()
-                .thenApply(nothing -> myManagedDir.resolve(ResourceUtil.resolveResource(fxdesignerResourcePath)));
+                .thenApply(nothing -> myManagedDir.resolve(extractedPathRelativeToThis));
     }
 
     public ExtractionTaskBuilder jarExtraction(Path jarFile) {

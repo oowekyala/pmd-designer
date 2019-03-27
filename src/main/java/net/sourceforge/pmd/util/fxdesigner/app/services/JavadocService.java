@@ -87,7 +87,9 @@ public class JavadocService implements ApplicationComponent, CloseableService {
                    .postProcessing(extractor::extractJar)
                    .extract();
 
-        javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE);
+
+        javadocExploded.extract("javadoc/", "", Integer.MAX_VALUE)
+                       .thenAccept(dir-> javadocExploded.jarExtraction(dir.resolve("frame.jar")).extract());
     }
 
     public Optional<URL> docUrl(Class<? extends Node> clazz) {
