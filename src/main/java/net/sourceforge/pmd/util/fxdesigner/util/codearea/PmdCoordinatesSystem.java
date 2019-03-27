@@ -74,8 +74,14 @@ public final class PmdCoordinatesSystem {
      * Also, PMD lines start at 1 but paragraph nums start at 0 in the code area.
      */
     public static int getOffsetFromPmdPosition(CodeArea codeArea, int line, int column) {
-        return codeArea.getAbsolutePosition(getRtfxParIndexFromPmdLine(line), column)
+        int base = codeArea.getAbsolutePosition(getRtfxParIndexFromPmdLine(line), column)
             - indentationOffset(codeArea, line - 1);
+
+        return clip(base, 0, codeArea.getLength());
+    }
+
+    private static int clip(int toClip, int min, int max) {
+        return Math.max(min, Math.min(toClip, max));
     }
 
 

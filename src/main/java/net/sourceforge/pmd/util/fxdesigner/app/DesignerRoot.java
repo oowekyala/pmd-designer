@@ -11,10 +11,10 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalDiskManager;
-import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.PersistenceManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.RichTextMapper;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManager;
 
 import javafx.stage.Stage;
 
@@ -35,8 +35,9 @@ public interface DesignerRoot {
     AppServiceDescriptor<EventLogger> LOGGER = new AppServiceDescriptor<>(EventLogger.class);
     /** Channel used to transmit node selection events to all interested components. */
     AppServiceDescriptor<MessageChannel<NodeSelectionEvent>> NODE_SELECTION_CHANNEL = new AppServiceDescriptor<>(MessageChannel.class);
-    /** Holds global state about the editor. */
-    AppServiceDescriptor<GlobalStateHolder> APP_STATE_HOLDER = new AppServiceDescriptor<>(GlobalStateHolder.class);
+
+    AppServiceDescriptor<ASTManager> AST_MANAGER = new AppServiceDescriptor<>(ASTManager.class);
+    AppServiceDescriptor<ASTManager> OLD_AST_MANAGER = new AppServiceDescriptor<>(ASTManager.class);
 
     AppServiceDescriptor<JavadocService> JAVADOC_SERVER = new AppServiceDescriptor<>(JavadocService.class);
     AppServiceDescriptor<GlobalDiskManager> DISK_MANAGER = new AppServiceDescriptor<>(GlobalDiskManager.class);

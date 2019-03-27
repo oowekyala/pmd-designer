@@ -14,7 +14,6 @@ import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLoggerImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalDiskManagerImpl;
-import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolderImpl;
 import net.sourceforge.pmd.util.fxdesigner.app.services.JavadocService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
@@ -62,7 +61,6 @@ public final class DesignerRootImpl implements DesignerRoot {
         registerService(PERSISTENCE_MANAGER, new OnDiskPersistenceManager(this, params.getPersistedInputFile(), params.getPersistedOutputFile()));
         registerService(JAVADOC_SERVER, new JavadocService(this));
         registerService(NODE_SELECTION_CHANNEL, new MessageChannel<>(Category.SELECTION_EVENT_TRACING));
-        registerService(APP_STATE_HOLDER, new GlobalStateHolderImpl());
     }
 
 

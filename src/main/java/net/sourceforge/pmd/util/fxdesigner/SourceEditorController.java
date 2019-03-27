@@ -10,7 +10,6 @@ import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.mapToggleGro
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.defaultLanguageVersion;
 import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.getSupportedLanguageVersions;
-import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.mapNewJavaToOld;
 import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.rewire;
 
 import java.io.File;
@@ -20,6 +19,7 @@ import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -35,17 +35,17 @@ import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.ClasspathClassLoader;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
-import net.sourceforge.pmd.util.fxdesigner.model.ASTManager;
-import net.sourceforge.pmd.util.fxdesigner.model.ParseAbortedException;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManager;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManagerImpl;
 import net.sourceforge.pmd.util.fxdesigner.popups.AuxclasspathSetupController;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeEditionCodeArea;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.NodeParentageCrumbBar;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ToolbarTitledPane;
-import net.sourceforge.pmd.util.fxdesigner.util.reactfx.VetoableEventStream;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -69,14 +69,15 @@ public class SourceEditorController extends AbstractController {
     private final ASTManager astManager;
     private final ASTManager oldAstManager;
     private final Var<List<File>> auxclasspathFiles = Var.newSimpleVar(emptyList());
-    private final Val<ClassLoader> auxclasspathClassLoader = auxclasspathFiles.map(fileList -> {
+    private final Val<ClassLoader> auxclasspathClassLoader = auxclasspathFiles.<ClassLoader>map(fileList -> {
         try {
             return new ClasspathClassLoader(fileList, SourceEditorController.class.getClassLoader());
         } catch (IOException e) {
             e.printStackTrace();
-            return SourceEditorController.class.getClassLoader();
+            return null;
         }
-    });
+    }).orElseConst(SourceEditorController.class.getClassLoader());
+
     @FXML
     private ToggleButton highlightRemovedOldNodesToggle;
     @FXML
@@ -107,8 +108,12 @@ public class SourceEditorController extends AbstractController {
 
     public SourceEditorController(DesignerRoot designerRoot) {
         super(designerRoot);
-        astManager = new ASTManager(designerRoot);
-        oldAstManager = new ASTManager(designerRoot);
+        ASTManagerImpl astManagerImpl = new ASTManagerImpl(designerRoot);
+        this.astManager = astManagerImpl;
+        oldAstManager = new ASTManagerImpl(astManagerImpl, LanguageRegistryUtil::mapNewJavaToOld);
+
+        designerRoot.registerService(DesignerRoot.AST_MANAGER, astManager);
+        designerRoot.registerService(DesignerRoot.OLD_AST_MANAGER, oldAstManager);
     }
 
 
@@ -118,9 +123,6 @@ public class SourceEditorController extends AbstractController {
 
         oldAstTreeView.setDebugName("TreeView (old ast)");
         astTreeView.setDebugName("TreeView (new ast)");
-
-        oldAstManager.languageVersionProperty().bind(mapNewJavaToOld(astManager.languageVersionProperty()));
-
 
         languageVersionProperty().values()
                                  .filterMap(Objects::nonNull, LanguageVersion::getLanguage)
@@ -134,23 +136,24 @@ public class SourceEditorController extends AbstractController {
                                  .subscribe(editorTitledPane::setTitle);
 
         nodeEditionCodeArea.plainTextChanges()
-                           .filter(t -> !t.isIdentity())
                            .successionEnds(AST_REFRESH_DELAY)
-                           // Refresh the AST anytime the text, classloader, or language version changes
-                           .or(auxclasspathClassLoader.changes())
-                           .or(languageVersionProperty().changes())
-                           .subscribe(tick -> {
-                               // Discard the AST if the language version has changed
-                               tick.ifRight(c -> astTreeView.setRoot(null));
-                               refreshAST();
-                           });
+                           .map(it -> nodeEditionCodeArea.getText())
+                           .subscribe(((ASTManagerImpl) astManager)::setSourceCode);
+
+        astManager.languageVersionProperty()
+                  .changes()
+                  .subscribe(c -> astTreeView.setAstRoot(null));
+
+        ((ASTManagerImpl) astManager).classLoaderProperty().bind(auxclasspathClassLoader);
 
         // default text, will be overwritten by settings restore
         // TODO this doesn't handle the case where java is not on the classpath
         setText(getDefaultText());
 
 
-        astManager.compilationUnitProperty().values().emitBothOnEach(oldAstManager.compilationUnitProperty().values())
+        // CUSTOM
+        astManager.compilationUnitProperty().values()
+                  .emitBothOnEach(oldAstManager.compilationUnitProperty().values())
                   .subscribe(n -> {
                       Node newAst = n._1;
                       Node oldAst = n._2;
@@ -166,9 +169,23 @@ public class SourceEditorController extends AbstractController {
 
                   });
 
+        // CUSTOM
         EventStreams.valuesOf(highlightRemovedOldNodesToggle.selectedProperty())
                     .subscribe(on -> oldAstTreeView.setAdditionalStyleClasses(on ? SourceEditorController::additionalStyleClasses : null));
 
+    }
+
+    @Override
+    public void afterParentInit() {
+
+        rewire(((ASTManagerImpl) astManager).languageVersionProperty(), languageVersionUIProperty);
+
+        nodeEditionCodeArea.moveCaret(0, 0);
+
+        initTreeView(astManager, astTreeView, editorTitledPane.errorMessageProperty());
+        initTreeView(oldAstManager, oldAstTreeView, oldAstTitledPane.errorMessageProperty());
+
+        getDesignerRoot().registerService(DesignerRoot.RICH_TEXT_MAPPER, nodeEditionCodeArea);
     }
 
 
@@ -197,6 +214,131 @@ public class SourceEditorController extends AbstractController {
         }
     }
 
+
+
+    private void initializeLanguageSelector() {
+
+        ToggleGroup languageToggleGroup = new ToggleGroup();
+
+        getSupportedLanguageVersions()
+                    .stream()
+                    .sorted(LanguageVersion::compareTo)
+                    .map(lv -> {
+                        RadioMenuItem item = new RadioMenuItem(lv.getShortName());
+                        item.setUserData(lv);
+                        return item;
+                    })
+                    .forEach(item -> {
+                        languageToggleGroup.getToggles().add(item);
+                        languageSelectionMenuButton.getItems().add(item);
+                    });
+
+        languageVersionUIProperty = mapToggleGroupToUserData(languageToggleGroup, LanguageRegistryUtil::defaultLanguageVersion);
+        // this will be overwritten by property restore if needed
+        languageVersionUIProperty.setValue(defaultLanguageVersion());
+    }
+
+
+
+    public void showAuxclasspathSetupPopup() {
+        new AuxclasspathSetupController(getDesignerRoot()).show(getMainStage(), auxclasspathFiles.getValue(), auxclasspathFiles::setValue);
+    }
+
+
+    public Var<List<Node>> currentRuleResultsProperty() {
+        return nodeEditionCodeArea.currentRuleResultsProperty();
+    }
+
+
+    public Var<List<Node>> currentErrorNodesProperty() {
+        return nodeEditionCodeArea.currentErrorNodesProperty();
+    }
+
+
+    public LanguageVersion getLanguageVersion() {
+        return languageVersionUIProperty.getValue();
+    }
+
+
+    public void setLanguageVersion(LanguageVersion version) {
+        languageVersionUIProperty.setValue(version);
+    }
+
+
+    public Var<LanguageVersion> languageVersionProperty() {
+        return languageVersionUIProperty;
+    }
+
+
+    public String getText() {
+        return nodeEditionCodeArea.getText();
+    }
+
+
+    public void setText(String expression) {
+        nodeEditionCodeArea.replaceText(expression);
+    }
+
+
+    public Val<String> textProperty() {
+        return Val.wrap(nodeEditionCodeArea.textProperty());
+    }
+
+
+    @PersistentProperty
+    public String getAuxclasspathFiles() {
+        return auxclasspathFiles.getValue().stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator));
+    }
+
+
+    public void setAuxclasspathFiles(String files) {
+        List<File> newVal = Arrays.stream(files.split(File.pathSeparator)).map(File::new).collect(Collectors.toList());
+        auxclasspathFiles.setValue(newVal);
+    }
+
+
+    @Override
+    public List<? extends SettingsOwner> getChildrenSettingsNodes() {
+        return Collections.singletonList(astManager);
+    }
+
+    @Override
+    public String getDebugName() {
+        return "editor";
+    }
+
+    /**
+     * Refreshes the AST and returns the new compilation unit if the parse didn't fail.
+     */
+    private static void initTreeView(ASTManager manager,
+                                     AstTreeView treeView,
+                                     Var<String> errorMessageProperty) {
+
+        manager.sourceCodeProperty()
+               .values()
+               .filter(StringUtils::isBlank)
+               .subscribe(code -> treeView.setAstRoot(null));
+
+        manager.currentExceptionProperty()
+               .values()
+               .subscribe(e -> {
+                   if (e == null) {
+                       errorMessageProperty.setValue(null);
+                   } else {
+                       errorMessageProperty.setValue(sanitizeExceptionMessage(e));
+                   }
+               });
+
+        manager.compilationUnitProperty()
+               .values()
+               .filter(Objects::nonNull)
+               .subscribe(node -> {
+                   errorMessageProperty.setValue("");
+                   treeView.setAstRoot(node);
+               });
+    }
+
+    // CUSTOM
     private static Collection<String> additionalStyleClasses(Node n) {
         if (n == null) {
             return emptySet();
@@ -261,156 +403,5 @@ public class SourceEditorController extends AbstractController {
         }
         return emptySet();
 
-    }
-
-
-    @Override
-    public void afterParentInit() {
-
-        // Bind global compilation unit to the main ast manager
-        Var<Node> globalCompilationUnit = getGlobalState().writableGlobalCompilationUnitProperty();
-        // CUSTOM
-        Var<Node> globalOldCompilationUnit = getGlobalState().writableGlobalOldCompilationUnitProperty();
-
-        // veto null events to ignore null compilation units if they're
-        // followed by a valid one quickly
-        VetoableEventStream.vetoableNull(astManager.compilationUnitProperty().values(), Duration.ofMillis(500))
-                           .subscribe(globalCompilationUnit::setValue);
-
-        // CUSTOM
-        VetoableEventStream.vetoableNull(oldAstManager.compilationUnitProperty().values(), Duration.ofMillis(500))
-                           .subscribe(globalOldCompilationUnit::setValue);
-
-
-        rewire(astManager.languageVersionProperty(), languageVersionUIProperty);
-        nodeEditionCodeArea.moveCaret(0, 0);
-
-        getDesignerRoot().registerService(DesignerRoot.RICH_TEXT_MAPPER, nodeEditionCodeArea);
-    }
-
-
-    private void initializeLanguageSelector() {
-
-        ToggleGroup languageToggleGroup = new ToggleGroup();
-
-        getSupportedLanguageVersions()
-                    .stream()
-                    .sorted(LanguageVersion::compareTo)
-                    .map(lv -> {
-                        RadioMenuItem item = new RadioMenuItem(lv.getShortName());
-                        item.setUserData(lv);
-                        return item;
-                    })
-                    .forEach(item -> {
-                        languageToggleGroup.getToggles().add(item);
-                        languageSelectionMenuButton.getItems().add(item);
-                    });
-
-        languageVersionUIProperty = mapToggleGroupToUserData(languageToggleGroup, LanguageRegistryUtil::defaultLanguageVersion);
-        // this will be overwritten by property restore if needed
-        languageVersionUIProperty.setValue(defaultLanguageVersion());
-    }
-
-    /**
-     * Refreshes the AST and returns the new compilation unit if the parse didn't fail.
-     */
-    public void refreshAST() {
-        String source = getText();
-
-        if (StringUtils.isBlank(source)) {
-            astTreeView.setAstRoot(null);
-            return;
-        }
-
-
-        try {
-            // this will push the new compilation unit on the global Val
-            astManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
-                      .ifPresent(this::setUpToDateCompilationUnit);
-
-        } catch (ParseAbortedException e) {
-            astTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
-            getGlobalState().writableGlobalCompilationUnitProperty().setValue(null);
-        }
-
-        try {
-            oldAstManager.updateIfChanged(source, auxclasspathClassLoader.getValue())
-                         .ifPresent(n -> {
-                             oldAstTreeView.setAstRoot(n);
-                             oldAstTitledPane.errorMessageProperty().setValue("");
-                         });
-        } catch (ParseAbortedException e) {
-            oldAstTitledPane.errorMessageProperty().setValue(sanitizeExceptionMessage(e));
-        }
-    }
-
-
-    public void showAuxclasspathSetupPopup() {
-        new AuxclasspathSetupController(getDesignerRoot()).show(getMainStage(), auxclasspathFiles.getValue(), auxclasspathFiles::setValue);
-    }
-
-
-    private void setUpToDateCompilationUnit(Node node) {
-        astTitledPane.errorMessageProperty().setValue("");
-        astTreeView.setAstRoot(node);
-    }
-
-    public Var<List<Node>> currentRuleResultsProperty() {
-        return nodeEditionCodeArea.currentRuleResultsProperty();
-    }
-
-
-    public Var<List<Node>> currentErrorNodesProperty() {
-        return nodeEditionCodeArea.currentErrorNodesProperty();
-    }
-
-
-    @PersistentProperty
-    public LanguageVersion getLanguageVersion() {
-        return languageVersionUIProperty.getValue();
-    }
-
-
-    public void setLanguageVersion(LanguageVersion version) {
-        languageVersionUIProperty.setValue(version);
-    }
-
-
-    public Var<LanguageVersion> languageVersionProperty() {
-        return languageVersionUIProperty;
-    }
-
-
-    @PersistentProperty
-    public String getText() {
-        return nodeEditionCodeArea.getText();
-    }
-
-
-    public void setText(String expression) {
-        nodeEditionCodeArea.replaceText(expression);
-    }
-
-
-    public Val<String> textProperty() {
-        return Val.wrap(nodeEditionCodeArea.textProperty());
-    }
-
-
-    @PersistentProperty
-    public String getAuxclasspathFiles() {
-        return auxclasspathFiles.getValue().stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator));
-    }
-
-
-    public void setAuxclasspathFiles(String files) {
-        List<File> newVal = Arrays.stream(files.split(File.pathSeparator)).map(File::new).collect(Collectors.toList());
-        auxclasspathFiles.setValue(newVal);
-    }
-
-
-    @Override
-    public String getDebugName() {
-        return "editor";
     }
 }

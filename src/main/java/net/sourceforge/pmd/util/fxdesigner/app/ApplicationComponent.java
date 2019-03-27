@@ -10,7 +10,6 @@ import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
 import net.sourceforge.pmd.util.fxdesigner.app.services.AppServiceDescriptor;
 import net.sourceforge.pmd.util.fxdesigner.app.services.EventLogger;
-import net.sourceforge.pmd.util.fxdesigner.app.services.GlobalStateHolder;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
@@ -33,6 +32,7 @@ import javafx.stage.Stage;
  *
  * @author Clément Fournier
  */
+@FunctionalInterface
 public interface ApplicationComponent {
 
 
@@ -44,13 +44,8 @@ public interface ApplicationComponent {
     }
 
 
-    default GlobalStateHolder getGlobalState() {
-        return getService(DesignerRoot.APP_STATE_HOLDER);
-    }
-
-
     default LanguageVersion getGlobalLanguageVersion() {
-        return getGlobalState().getGlobalLanguageVersion();
+        return getService(DesignerRoot.AST_MANAGER).languageVersionProperty().getValue();
     }
 
 

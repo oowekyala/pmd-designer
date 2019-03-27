@@ -41,6 +41,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
+import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManager;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.ObservableXPathRuleBuilder;
 import net.sourceforge.pmd.util.fxdesigner.model.XPathEvaluationException;
@@ -102,14 +103,15 @@ public final class XPathRuleEditorController extends AbstractController implemen
     private static final String NO_MATCH_MESSAGE = "No match in text";
     private static final Duration XPATH_REFRESH_DELAY = Duration.ofMillis(100);
     private static final Pattern JAXEN_MISSING_PROPERTY_EXTRACTOR = Pattern.compile("Variable (\\w+)");
+    private static final Pattern SAXON_MISSING_PROPERTY_EXTRACTOR = Pattern.compile("Undeclared variable in XPath expression: \\$(\\w+)");
     private final SoftReferenceCache<ExportXPathWizardController> exportWizard;
-
+    private final ObservableXPathRuleBuilder ruleBuilder;
+    private final Var<ObservableList<Node>> myXpathResults = Var.newSimpleVar(null);
+    private final Var<List<Node>> currentResults = Var.newSimpleVar(Collections.emptyList());
     @FXML
     public ToolbarTitledPane expressionTitledPane;
     @FXML
     public Button exportXpathToRuleButton;
-    private static final Pattern SAXON_MISSING_PROPERTY_EXTRACTOR = Pattern.compile("Undeclared variable in XPath expression: \\$(\\w+)");
-    private final ObservableXPathRuleBuilder ruleBuilder;
     @FXML
     private MenuButton xpathVersionMenuButton;
     @FXML
@@ -120,11 +122,8 @@ public final class XPathRuleEditorController extends AbstractController implemen
     private ToolbarTitledPane violationsTitledPane;
     @FXML
     private ListView<TextAwareNodeWrapper> xpathResultListView;
-    private final Var<ObservableList<Node>> myXpathResults = Var.newSimpleVar(null);
-
     // ui property
     private Var<String> xpathVersionUIProperty = Var.newSimpleVar(XPathRuleQuery.XPATH_2_0);
-    private final Var<List<Node>> currentResults = Var.newSimpleVar(Collections.emptyList());
     private SuspendableEventStream<TextAwareNodeWrapper> selectionEvents;
     @FXML
     private Label languageLabel;
@@ -135,6 +134,7 @@ public final class XPathRuleEditorController extends AbstractController implemen
     public XPathRuleEditorController(DesignerRoot root) {
         this(root, new ObservableXPathRuleBuilder());
     }
+
     /**
      * Creates a controller with an existing rule builder.
      */
@@ -158,9 +158,16 @@ public final class XPathRuleEditorController extends AbstractController implemen
         exportXpathToRuleButton.setOnAction(e -> showExportXPathToRuleWizard());
 
         getRuleBuilder().modificationsTicks()
-                        .or(getGlobalState().globalCompilationUnitProperty().values())
+                        .or(getService(DesignerRoot.AST_MANAGER).compilationUnitProperty().values())
                         .successionEnds(XPATH_REFRESH_DELAY)
-                        .subscribe(tick -> refreshResults());
+                        .subscribe(tick -> {
+
+                            ASTManager manager = oldJavaToggle.isSelected() // CUSTOM
+                                                 ? getService(DesignerRoot.OLD_AST_MANAGER)
+                                                 : getService(DesignerRoot.AST_MANAGER);
+
+                            refreshResults(manager);
+                        });
 
         selectionEvents = EventStreams.valuesOf(xpathResultListView.getSelectionModel().selectedItemProperty()).suppressible();
 
@@ -243,6 +250,11 @@ public final class XPathRuleEditorController extends AbstractController implemen
 
     @Override
     public void afterParentInit() {
+        // CUSTOM
+        if (getRuleBuilder().getLanguage().getTerseName().equals("oldjava")) {
+            oldJavaToggle.setSelected(true);
+        }
+
         bindToParent();
 
         // init autocompletion only after binding to mediator and settings restore
@@ -250,27 +262,14 @@ public final class XPathRuleEditorController extends AbstractController implemen
         Supplier<CompletionResultSource> suggestionMaker = () -> XPathCompletionSource.forLanguage(getRuleBuilder().getLanguage());
         new XPathAutocompleteProvider(xpathExpressionArea, suggestionMaker).initialiseAutoCompletion();
 
-        // CUSTOM
-        if (getRuleBuilder().getLanguage().getTerseName().equals("oldjava")) {
-            oldJavaToggle.setSelected(true);
-        }
 
-        // CUSTOM
-        EventStreams.changesOf(oldJavaToggle.selectedProperty())
-                    .subscribe(
-                        ch -> getRuleBuilder().setLanguage(
-                            LanguageRegistry.findLanguageByTerseName(ch.getNewValue() ? "oldjava" : "java")
-                        )
-                    );
     }
 
     // Binds the underlying rule parameters to the mediator UI, disconnecting it from the wizard if need be
     private void bindToParent() {
-        if (oldJavaToggle.isSelected()) {
-            // CUSTOM
-            DesignerUtil.rewire(getRuleBuilder().languageProperty(),
-                                LanguageRegistryUtil.oldJavaLangProperty(ReactfxUtil.booleanVar(oldJavaToggle.selectedProperty())));
-        }
+        // CUSTOM
+        DesignerUtil.rewire(getRuleBuilder().languageProperty(),
+                            LanguageRegistryUtil.oldJavaLangProperty(ReactfxUtil.booleanVar(oldJavaToggle.selectedProperty())));
 
         ReactfxUtil.rewireInit(getRuleBuilder().xpathVersionProperty(), xpathVersionProperty());
         ReactfxUtil.rewireInit(getRuleBuilder().xpathExpressionProperty(), xpathExpressionProperty());
@@ -302,9 +301,8 @@ public final class XPathRuleEditorController extends AbstractController implemen
      * on the global compilation unit. This updates the xpath
      * result panel, and can log XPath exceptions to the
      * event log panel.
-     *
      */
-    private void refreshResults() {
+    private void refreshResults(ASTManager manager) {
 
         try {
             String xpath = xpathExpressionProperty().getValue();
@@ -313,10 +311,7 @@ public final class XPathRuleEditorController extends AbstractController implemen
                 return;
             }
 
-
-            Node compilationUnit = oldJavaToggle.isSelected() // CUSTOM
-                                   ? getGlobalState().globalOldCompilationUnitProperty().getValue()
-                                   : getGlobalState().globalCompilationUnitProperty().getValue();
+            Node compilationUnit = manager.compilationUnitProperty().getValue();
 
             if (compilationUnit == null) {
                 updateResults(false, true, Collections.emptyList(), "Compilation unit is invalid");
@@ -324,11 +319,7 @@ public final class XPathRuleEditorController extends AbstractController implemen
             }
 
 
-            LanguageVersion version = getGlobalState().globalLanguageVersionProperty().getValue();
-
-            if (oldJavaToggle.isSelected()) {
-                version = LanguageRegistryUtil.mapNewJavaToOld(version);
-            }
+            LanguageVersion version = manager.languageVersionProperty().getValue();
 
             ObservableList<Node> results
                 = FXCollections.observableArrayList(XPathEvaluator.evaluateQuery(compilationUnit,

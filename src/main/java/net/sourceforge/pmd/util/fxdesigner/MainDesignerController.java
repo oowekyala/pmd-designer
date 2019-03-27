@@ -140,8 +140,6 @@ public class MainDesignerController extends AbstractController {
 
         sourceEditorController.currentRuleResultsProperty().bind(ruleEditorsController.currentRuleResults());
 
-        getGlobalState().writeableGlobalLanguageVersionProperty().bind(sourceEditorController.languageVersionProperty());
-
         metricPaneController.numAvailableMetrics().values().subscribe(n -> {
             metricResultsTab.setText("Metrics\t(" + (n == 0 ? "none" : n) + ")");
             metricResultsTab.setDisable(n == 0);
