@@ -111,7 +111,7 @@ public interface ApplicationComponent {
      * Only logged in developer mode.
      */
     default void raiseParsableXPathFlag() {
-        getLogger().logEvent(LogEntry.createUserFlagEntry(Category.XPATH_OK));
+        getLogger().logEvent(LogEntry.createUserFlagEntry("", Category.XPATH_OK));
     }
 
 
@@ -119,8 +119,9 @@ public interface ApplicationComponent {
      * Notify the logger that source code parsing succeeded and that the last recent failure may be thrown away.
      * Only logged in developer mode.
      */
-    default void raiseParsableSourceFlag() {
-        getLogger().logEvent(LogEntry.createUserFlagEntry(Category.PARSE_OK));
+    default void raiseParsableSourceFlag(Supplier<String> details) {
+        String realDetails = isDeveloperMode() ? details.get() : "";
+        getLogger().logEvent(LogEntry.createUserFlagEntry(realDetails, Category.PARSE_OK));
     }
 
     // Internal log handlers

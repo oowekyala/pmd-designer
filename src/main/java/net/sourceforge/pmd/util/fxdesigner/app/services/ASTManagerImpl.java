@@ -9,6 +9,7 @@ import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.VetoableEventStre
 
 import java.io.StringReader;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -25,6 +26,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.model.ParseAbortedException;
+import net.sourceforge.pmd.util.fxdesigner.util.Tuple3;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
 
@@ -60,14 +62,15 @@ public class ASTManagerImpl implements ASTManager {
 
         // Refresh the AST anytime the text, classloader, or language version changes
         sourceCode.values()
+                  .or(auxclasspathClassLoader.values())
+                  .or(languageVersionProperty().values())
+                  .map(tick -> new Tuple3<>(getSourceCode(), getLanguageVersion(), classLoaderProperty().getValue()))
                   .distinct()
-                  .or(auxclasspathClassLoader.values().distinct())
-                  .or(languageVersionProperty().values().distinct())
                   .subscribe(tick -> {
 
-                      LanguageVersion version = getLanguageVersion();
-                      String source = getSourceCode();
-                      ClassLoader classLoader = classLoaderProperty().getValue();
+                      String source = tick._1;
+                      LanguageVersion version = tick._2;
+                      ClassLoader classLoader = tick._3;
 
                       if (version == null) {
                           return;
@@ -195,7 +198,8 @@ public class ASTManagerImpl implements ASTManager {
         }
 
         // Notify that the parse went OK so we can avoid logging very recent exceptions
-        component.raiseParsableSourceFlag();
+
+        component.raiseParsableSourceFlag(() -> "Param hash: " + Objects.hash(source, version, classLoader));
 
         return Optional.of(node);
     }

@@ -106,8 +106,8 @@ public class LogEntry implements Comparable<LogEntry> {
      * Just for the flag categories {@link Category#PARSE_OK} and {@link Category#XPATH_OK},
      * which are not rendered in the log.
      */
-    public static LogEntry createUserFlagEntry(Category flagCategory) {
-        return new LogEntry("", "", flagCategory, false);
+    public static LogEntry createUserFlagEntry(String details, Category flagCategory) {
+        return new LogEntry(details, "", flagCategory, false);
     }
 
     public static <T> LogEntry serviceRegistered(AppServiceDescriptor<T> descriptor, T service) {
