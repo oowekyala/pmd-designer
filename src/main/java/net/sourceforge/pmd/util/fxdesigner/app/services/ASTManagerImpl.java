@@ -73,12 +73,13 @@ public class ASTManagerImpl implements ASTManager {
                       LanguageVersion version = tick._2;
                       ClassLoader classLoader = tick._3;
 
-                      if (version == null) {
+
+                      if (StringUtils.isBlank(source) || version == null) {
+                          compilationUnit.setValue(null);
+                          currentException.setValue(null);
                           return;
                       }
-                      if (source == null) {
-                          source = "";
-                      }
+
                       if (classLoader == null) {
                           classLoader = ASTManagerImpl.class.getClassLoader();
                       }

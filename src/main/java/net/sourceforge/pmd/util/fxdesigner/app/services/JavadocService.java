@@ -71,7 +71,7 @@ public class JavadocService implements ApplicationComponent, CloseableService {
             return "CPU time: " + cpuTime + " ns (" + cpuTime / 1000000 + " ms)\n"
                 + "User time: " + userTime + " ns (" + userTime / 1000000 + " ms)\n"
                 + "Wallclock time: " + wallclockTime + " ns (" + wallclockTime / 1000000 + " ms)\n"
-                + "JVM runtime: " + uptimeMs + " ms \n"
+                + "JVM uptime: " + uptimeMs + " ms \n"
                 ;
         });
     }
