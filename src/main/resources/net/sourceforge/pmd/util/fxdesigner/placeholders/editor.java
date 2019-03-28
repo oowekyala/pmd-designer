@@ -14,11 +14,12 @@ class Foo {
     Those are all nodes whose presence doesn't add anything to the tree and
     which in all cases were worked around in rules. Using interfaces declutters
     the tree, removes inconsistencies, and makes it look like more of an AST
-    than a *parse tree*.
+    than a parse tree.
 
     I ran some benchmarks to compare the old parser to this one.
     * Parsing performance is equivalent
     * ASTs are on average about 60% as big (they're smaller)
+      * They're also around 3 to 6 nodes less deep, depending on the metric
     * Since the AST is more compact, the runtime of a full visitor traversal
       is decreased on average by 12%
 
@@ -46,12 +47,15 @@ class Foo {
         Object k = (null);
 
 
-        // FieldAccess with a ThisExpression as LHS
-        // Also, AssignmentExpression
-        this.myName = "foo";
-        // ThisExpression
-        Object me = this;
+        // AdditiveExpression implements #1661
+        // A new level is pushed every time the operator changes
+        // So this is flat:
+        int q = l + b + 0 + c;
+        // But this has two levels:
+        q = l + b - 0 - c;
 
+        // Same for MultiplicativeExpression
+        q = 2 * 3 * b / 1;
 
         // ArrayAllocation and ConstructorCall replace AllocationExpression
 
@@ -62,7 +66,7 @@ class Foo {
         // ConstructorCall
         me = new Foo();
         // qualified constructor call
-        me = me.new Inner().foo();
+        me = me.new Inner();
         // anonymous class
         me = me.new Inner() {
             // qualified this
@@ -72,10 +76,17 @@ class Foo {
         // notice that "me" in the assignments above is not syntactically
         // ambiguous, must be a variable because we assign to it
 
-        // SuperExpression
+        // SuperExpression, MethodCall
         // "super" is exactly symmetric to "this"
         super.fooo();
         Any.super.bar();
+
+        // FieldAccess with a ThisExpression as LHS
+        // Also, AssignmentExpression
+        this.myName = "foo";
+        // ThisExpression
+        Object me = this;
+
 
         // array type, array initializer
         // look at how many levels are removed from the array initializer
@@ -121,7 +132,7 @@ class Foo {
        * Remove MemberValuePairs. MemberValuePair may only occur in
          NormalAnnotation so that node added no information.
        * TBH we could also merge NormalAnnotation, MarkerAnnotation and SingleMemberAnnotation
-         into a single node. It's not very useful to separate them that way. We'd have
+         into a single node. It's not very useful to separate them that way. We could have
          a single node "Annotation", with the following grammar:
          Annotation        := "@" <Name #void> [ AnnotationMembers ]
          AnnotationMembers := "(" (Expression | (MemberValuePair)*) ")"
@@ -188,6 +199,7 @@ class Foo {
 
 Changelog for the Expression grammar
   * Make ASTVariableInitializer, ASTExpression, ASTPrimaryExpression, ASTLiteral interfaces
+  * Implement #1661 for MultiplicativeExpression and AdditiveExpression
   * Introduce new node types:
     * ASTClassLiteral, ASTNumericLiteral, ASTStringLiteral, ASTCharLiteral
       * those divide the work of ASTLiteral, they implement it along with preexisting ASTBooleanLiteral, ASTNullLiteral
