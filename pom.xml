@@ -395,12 +395,7 @@
             <artifactId>controlsfx-mr-jar</artifactId>
             <version>1.0</version>
         </dependency>
-        <dependency>
-            <groupId>com.github.oowekyala</groupId>
-            <artifactId>fx-live-templates</artifactId>
-            <version>1.0</version>
-        </dependency>
-
+        
         <!-- Those are shaded to avoid duplication -->
         <dependency>
             <groupId>org.apache.commons</groupId>
