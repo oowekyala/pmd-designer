@@ -4,9 +4,9 @@
 
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
@@ -37,11 +37,18 @@ public class OnDiskPersistenceManager implements PersistenceManager {
 
     @Override
     public void restoreSettings(SettingsOwner settingsOwner) {
+        CompletableFuture<Path> extraction = null;
         if (input == null || !Files.isRegularFile(input) || !Files.exists(input)) {
-            return;
+            // TODO this should be kept around
+            Path settingsDirectory = getService(DesignerRoot.DISK_MANAGER).getSettingsDirectory();
+            ResourceManager manager = new ResourceManager(getDesignerRoot(), settingsDirectory);
+            extraction = manager.extractResource("placeholders/appstate.xml", "appstate.xml");
         }
+
         try {
-            SettingsPersistenceUtil.restoreProperties(settingsOwner, input.toFile());
+            Path realInput = extraction != null ? extraction.get() : input;
+
+            SettingsPersistenceUtil.restoreProperties(settingsOwner, realInput.toFile());
         } catch (Exception e) {
             // shouldn't prevent the app from opening
             // in case the file is corrupted, it will be overwritten on shutdown

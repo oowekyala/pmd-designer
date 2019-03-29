@@ -1,8 +1,0 @@
-(: This matches array allocs that may be replaced with just the initializer (#1495) :)
-//VariableDeclarator[parent::*/ArrayType][ArrayAllocation/ArrayInitializer]
-
-(: Compare the same on the old AST:
-//VariableDeclarator
-[parent::*/Type/ReferenceType[@Array=true()]]
-[VariableInitializer/Expression/PrimaryExpression/PrimaryPrefix/AllocationExpression/ArrayDimsAndInits/ArrayInitializer]
-:)

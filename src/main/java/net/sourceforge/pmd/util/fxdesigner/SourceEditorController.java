@@ -135,11 +135,6 @@ public class SourceEditorController extends AbstractController {
                                  .map(lang -> "Source Code (" + lang + ")")
                                  .subscribe(editorTitledPane::setTitle);
 
-        nodeEditionCodeArea.plainTextChanges()
-                           .successionEnds(AST_REFRESH_DELAY)
-                           .map(it -> nodeEditionCodeArea.getText())
-                           .subscribe(((ASTManagerImpl) astManager)::setSourceCode);
-
         astManager.languageVersionProperty()
                   .changes()
                   .subscribe(c -> astTreeView.setAstRoot(null));
@@ -179,6 +174,14 @@ public class SourceEditorController extends AbstractController {
     public void afterParentInit() {
 
         rewire(((ASTManagerImpl) astManager).languageVersionProperty(), languageVersionUIProperty);
+
+        nodeEditionCodeArea.replaceText(((ASTManagerImpl) astManager).getSourceCode());
+
+        nodeEditionCodeArea.plainTextChanges()
+                           .successionEnds(AST_REFRESH_DELAY)
+                           .map(it -> nodeEditionCodeArea.getText())
+                           .subscribe(((ASTManagerImpl) astManager)::setSourceCode);
+
 
         nodeEditionCodeArea.moveCaret(0, 0);
 

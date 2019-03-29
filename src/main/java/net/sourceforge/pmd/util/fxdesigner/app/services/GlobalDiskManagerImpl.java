@@ -48,6 +48,7 @@ public class GlobalDiskManagerImpl implements GlobalDiskManager, ApplicationComp
 
 
         try {
+            Files.createDirectories(settingsDirectory);
             if (!Files.exists(curVersionStamp)) {
                 Files.createFile(curVersionStamp);
             }
