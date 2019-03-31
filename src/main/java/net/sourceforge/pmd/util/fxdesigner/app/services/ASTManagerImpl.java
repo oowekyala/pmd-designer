@@ -54,7 +54,7 @@ public class ASTManagerImpl implements ASTManager {
     /**
      * Last valid source that was compiled, corresponds to {@link #compilationUnit}.
      */
-    private Var<String> sourceCode = Var.newSimpleVar(null);
+    private Var<String> sourceCode = Var.newSimpleVar("");
 
     private Var<ParseAbortedException> currentException = Var.newSimpleVar(null);
 
@@ -101,23 +101,28 @@ public class ASTManagerImpl implements ASTManager {
         this(base.getDesignerRoot());
 
         languageVersionProperty().bind(base.languageVersionProperty().map(languageVersionMap));
-        sourceCodeProperty().bind(base.sourceCodeProperty());
+        sourceCode.bind(base.sourceCodeProperty());
         classLoaderProperty().bind(base.classLoaderProperty());
 
     }
 
 
     @Override
-    public Var<String> sourceCodeProperty() {
-        return sourceCode;
+    public Val<String> sourceCodeProperty() {
+        return sourceCode.orElseConst("");
     }
 
     @PersistentProperty
+    @Override
     public String getSourceCode() {
         return sourceCode.getValue();
     }
 
+    @Override
     public void setSourceCode(String sourceCode) {
+        if (StringUtils.isEmpty(sourceCode)) {
+            sourceCode = "";
+        }
         this.sourceCode.setValue(sourceCode);
     }
 

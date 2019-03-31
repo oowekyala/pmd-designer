@@ -26,6 +26,12 @@ public interface ASTManager extends ApplicationComponent, SettingsOwner {
     Val<String> sourceCodeProperty();
 
 
+    String getSourceCode();
+
+
+    void setSourceCode(String sourceCode);
+
+
     Val<LanguageVersion> languageVersionProperty();
 
 

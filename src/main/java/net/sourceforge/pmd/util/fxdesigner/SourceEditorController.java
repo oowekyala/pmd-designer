@@ -175,7 +175,7 @@ public class SourceEditorController extends AbstractController {
 
         rewire(((ASTManagerImpl) astManager).languageVersionProperty(), languageVersionUIProperty);
 
-        nodeEditionCodeArea.replaceText(((ASTManagerImpl) astManager).getSourceCode());
+        nodeEditionCodeArea.replaceText(astManager.getSourceCode());
 
         nodeEditionCodeArea.plainTextChanges()
                            .successionEnds(AST_REFRESH_DELAY)
