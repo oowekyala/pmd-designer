@@ -86,52 +86,56 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
 
     private void initAddButton() {
 
-        Platform.runLater(() -> {
-            // Basically we superimpose a transparent HBox over the TabPane
-            // it needs to be done in a runLater because we need to access the
-            // TabPane's header region, which is created by the TabPane's skin
-            // on the first layout
+        Val.wrap(tabPane.skinProperty())
+           .values()
+           .filter(Objects::nonNull)
+           .subscribeForOne(skin -> Platform.runLater(() -> {
+               // Basically we superimpose a transparent HBox over the TabPane
+               // it needs to be done in a runLater because we need to access the
+               // TabPane's header region, which is created by the TabPane's skin
+               // on the first layout
 
-            Region headersRegion = (Region) tabPane.lookup(".headers-region");
+               Region headersRegion = (Region) tabPane.lookup(".headers-region");
 
-            // a pane that always has the size of the header region,
-            // pushing the new tab button to its right
-            Pane headerSizePane = new Pane();
-            headerSizePane.setMouseTransparent(true);
-            headerSizePane.prefWidthProperty().bind(headersRegion.widthProperty());
+               // a pane that always has the size of the header region,
+               // pushing the new tab button to its right
+               Pane headerSizePane = new Pane();
+               headerSizePane.setMouseTransparent(true);
+               headerSizePane.prefWidthProperty().bind(headersRegion.widthProperty());
 
-            // the new tab button
-            Button newTabButton = new Button();
-            newTabButton.getStyleClass().addAll("icon-button", "add-tab-button");
-            newTabButton.setTooltip(new Tooltip("Add new tab"));
-            newTabButton.setGraphic(new FontIcon("fas-plus"));
-            newTabButton.onActionProperty().set(actionEvent -> addTabWithNewController());
-            // bind bounds to a square that fits inside the header's region
-            newTabButton.maxHeightProperty().bind(headersRegion.heightProperty());
-            newTabButton.maxWidthProperty().bind(headersRegion.heightProperty());
+               // the new tab button
+               Button newTabButton = new Button();
+               newTabButton.getStyleClass().addAll("icon-button", "add-tab-button");
+               newTabButton.setTooltip(new Tooltip("Add new tab"));
+               newTabButton.setGraphic(new FontIcon("fas-plus"));
+               newTabButton.onActionProperty().set(actionEvent -> addTabWithNewController());
+               // bind bounds to a square that fits inside the header's region
+               newTabButton.maxHeightProperty().bind(headersRegion.heightProperty());
+               newTabButton.maxWidthProperty().bind(headersRegion.heightProperty());
 
-            // Rightmost node, grows to fill the rest of the horizontal space
-            Pane spring = new Pane();
-            spring.setMouseTransparent(true);
-            HBox.setHgrow(spring, Priority.ALWAYS);
+               // Rightmost node, grows to fill the rest of the horizontal space
+               Pane spring = new Pane();
+               spring.setMouseTransparent(true);
+               HBox.setHgrow(spring, Priority.ALWAYS);
 
-            HBox box = new HBox();
-            box.getStylesheets().addAll(resolveResource("css/flat.css"), resolveResource("css/designer.css"));
-            // makes the HBox's transparent regions click-through
-            // https://stackoverflow.com/questions/16876083/javafx-pass-mouseevents-through-transparent-node-to-children
-            box.setPickOnBounds(false);
-            box.prefHeightProperty().bind(headersRegion.heightProperty());
+               HBox box = new HBox();
+               box.getStylesheets().addAll(resolveResource("css/flat.css"), resolveResource("css/designer.css"));
+               // makes the HBox's transparent regions click-through
+               // https://stackoverflow.com/questions/16876083/javafx-pass-mouseevents-through-transparent-node-to-children
+               box.setPickOnBounds(false);
+               box.prefHeightProperty().bind(headersRegion.heightProperty());
 
-            box.getChildren().addAll(headerSizePane, newTabButton, spring);
+               box.getChildren().addAll(headerSizePane, newTabButton, spring);
 
-            // Fits the HBox's size to the container
-            AnchorPane.setTopAnchor(box, 0d);
-            AnchorPane.setRightAnchor(box, 0d);
-            AnchorPane.setLeftAnchor(box, 0d);
+               // Fits the HBox's size to the container
+               AnchorPane.setTopAnchor(box, 0d);
+               AnchorPane.setRightAnchor(box, 0d);
+               AnchorPane.setLeftAnchor(box, 0d);
 
-            // don't forget that
-            this.getChildren().addAll(box);
-        });
+               // don't forget that
+               this.getChildren().addAll(box);
+           }));
+
     }
 
 
