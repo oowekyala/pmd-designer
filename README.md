@@ -1,3 +1,10 @@
+
+**This branch builds a special designer to diff between the old and new AST structure (7.0.0)**
+
+* It's kind of hard to build as it depends on a pmd-core version on which https://github.com/oowekyala/pmd/tree/grammar-expressions and https://github.com/pmd/pmd/pull/1622 have been merged.
+* Build the runnable jar with the instructions below, having installed the pmd-core and pmd-java versions in your local maven repo
+
+
 # PMD Rule Designer
 
 [![Build Status](https://travis-ci.com/pmd/pmd-designer.svg?branch=master)](https://travis-ci.com/pmd/pmd-designer) 
