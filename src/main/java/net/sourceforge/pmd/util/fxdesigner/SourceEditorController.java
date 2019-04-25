@@ -352,10 +352,7 @@ public class SourceEditorController extends AbstractController {
                 break;
             }
         case "Arguments":
-            if (n.jjtGetParent().getXPathNodeName().equals("ExplicitConstructorInvocation")) {
-                // to remove
-                return Arrays.asList("removal-level", "depth-1");
-            } else if (n.jjtGetNumChildren() == 0) {
+            if (n.jjtGetNumChildren() == 0) {
                 // actually the ArgumentsList
                 return emptyList();
             }

@@ -106,7 +106,7 @@ public final class LanguageRegistryUtil {
                        .map(LanguageVersion::getTerseName)
                        .map(it -> it.replace("java", "oldjava"))
                        .map(LanguageRegistry::findLanguageVersionByTerseName)
-                       .get();
+                       .orElseGet(() -> LanguageRegistry.findLanguageByTerseName("oldjava").getDefaultVersion());
     }
 
 }
