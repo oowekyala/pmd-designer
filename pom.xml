@@ -37,6 +37,9 @@
         <openjfx.version>11</openjfx.version>
         <java.version>8</java.version>
 
+        <oldjava.version>6.14.0-SNAPSHOT</oldjava.version>
+
+
         <local.lib.repo>${project.basedir}/lib/mvn-repo</local.lib.repo>
 
         <checkstyle.version>3.0.0</checkstyle.version>
@@ -545,7 +548,7 @@
                 <dependency>
                     <groupId>net.sourceforge.pmd</groupId>
                     <artifactId>pmd-oldjava</artifactId>
-                    <version>6.13.0-SNAPSHOT</version>
+                    <version>${oldjava.version}</version>
                     <optional>true</optional>
                     <scope>runtime</scope>
                 </dependency>
@@ -611,7 +614,7 @@
                 <dependency>
                     <groupId>net.sourceforge.pmd</groupId>
                     <artifactId>pmd-oldjava</artifactId>
-                    <version>6.13.0-SNAPSHOT</version>
+                    <version>${oldjava.version}</version>
                     <optional>true</optional>
                     <scope>runtime</scope>
                 </dependency>
@@ -763,14 +766,12 @@
                     <groupId>net.sourceforge.pmd</groupId>
                     <artifactId>pmd-java</artifactId>
                     <version>${pmd.core.version}</version>
-                    <optional>true</optional>
                     <scope>runtime</scope>
                 </dependency>
                 <dependency>
                     <groupId>net.sourceforge.pmd</groupId>
                     <artifactId>pmd-oldjava</artifactId>
-                    <version>6.13.0-SNAPSHOT</version>
-                    <optional>true</optional>
+                    <version>${oldjava.version}</version>
                     <scope>runtime</scope>
                 </dependency>
             </dependencies>

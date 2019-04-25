@@ -2,23 +2,23 @@
 <metadata modelVersion="1.1.0">
   <groupId>net.sourceforge.pmd</groupId>
   <artifactId>pmd-oldjava</artifactId>
-  <version>6.13.0-SNAPSHOT</version>
+  <version>6.14.0-SNAPSHOT</version>
   <versioning>
     <snapshot>
-      <timestamp>20190320.141527</timestamp>
-      <buildNumber>4</buildNumber>
+      <timestamp>20190426.034000</timestamp>
+      <buildNumber>1</buildNumber>
     </snapshot>
-    <lastUpdated>20190320141527</lastUpdated>
+    <lastUpdated>20190426034000</lastUpdated>
     <snapshotVersions>
       <snapshotVersion>
         <extension>jar</extension>
-        <value>6.13.0-20190320.141527-4</value>
-        <updated>20190320141527</updated>
+        <value>6.14.0-20190426.034000-1</value>
+        <updated>20190426034000</updated>
       </snapshotVersion>
       <snapshotVersion>
         <extension>pom</extension>
-        <value>6.13.0-20190320.141527-4</value>
-        <updated>20190320141527</updated>
+        <value>6.14.0-20190426.034000-1</value>
+        <updated>20190426034000</updated>
       </snapshotVersion>
     </snapshotVersions>
   </versioning>

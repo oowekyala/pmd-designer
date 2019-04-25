@@ -180,30 +180,6 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <!-- Deploy with -->
-                <!-- mvn deploy:deploy-file@old-java-deploy-->
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.0.0-M1</version>
-                <executions>
-                    <execution>
-                        <phase>deploy</phase>
-                        <id>old-java-deploy</id>
-                        <goals>
-                            <goal>deploy-file</goal>
-                        </goals>
-                        <configuration>
-                            <file>${project.basedir}/pmd-oldjava-6.13.0-SNAPSHOT.jar</file>
-                            <groupId>net.sourceforge.pmd</groupId>
-                            <artifactId>pmd-oldjava</artifactId>
-                            <version>6.13.0-SNAPSHOT</version>
-                            <url>file://${local.lib.repo}</url>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
         </plugins>
     </build>
 </project>
