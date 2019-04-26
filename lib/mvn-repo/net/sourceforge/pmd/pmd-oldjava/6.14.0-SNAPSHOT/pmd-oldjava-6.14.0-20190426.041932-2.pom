@@ -1,29 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <artifactId>pmd-ui-local-libs</artifactId>
+    <groupId>net.sourceforge.pmd</groupId>
+    <version>1.0</version>
+    <relativePath>../aggregate/pom.xml</relativePath>
+  </parent>
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.sourceforge.pmd</groupId>
   <artifactId>pmd-oldjava</artifactId>
-  <name>PMD old java</name>
+  <name>PMD 6.0.x java module</name>
   <version>6.14.0-SNAPSHOT</version>
   <build>
     <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.7.0</version>
-        <executions>
-          <execution>
-            <id>default-compile</id>
-            <phase>none</phase>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>3.1.0</version>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.2.1</version>
@@ -55,17 +43,9 @@
       </plugin>
     </plugins>
   </build>
-  <distributionManagement>
-    <repository>
-      <id>local-libs</id>
-      <url>file://${local.lib.repo}</url>
-    </repository>
-  </distributionManagement>
   <properties>
-    <local.lib.repo>${project.basedir}/mvn-repo</local.lib.repo>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <build.version.dir>${project.build.outputDirectory}/META-INF/versions</build.version.dir>
-    <jar.artifact.name>${project.artifactId}-${project.version}</jar.artifact.name>
     <oldjava.version>${project.version}</oldjava.version>
   </properties>
 </project>

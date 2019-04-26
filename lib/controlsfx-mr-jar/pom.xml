@@ -5,6 +5,7 @@
 
     <groupId>org.controlsfx.custom</groupId>
     <artifactId>controlsfx-mr-jar</artifactId>
+    <name>ControlsFX multi-release jar</name>
     <version>1.0</version>
 
     <!-- This is used to build the controlsfx multi-release jar. -->
@@ -15,11 +16,15 @@
     <!-- controlsfx project to release an airtight implementation. -->
     <!-- That doesn't seem to be in their priorities: https://github.com/controlsfx/controlsfx/issues/1014 -->
 
-    <name>controlsfx-mr-jar</name>
+    <parent>
+        <groupId>net.sourceforge.pmd</groupId>
+        <artifactId>pmd-ui-local-libs</artifactId>
+        <version>1.0</version>
+        <relativePath>../aggregate</relativePath>
+    </parent>
 
     <properties>
 
-        <local.lib.repo>${project.basedir}/mvn-repo</local.lib.repo>
         <jar.artifact.name>${project.artifactId}-${project.version}</jar.artifact.name>
 
         <unpacked.javadoc.dir>${project.build.directory}/apidocs</unpacked.javadoc.dir>
@@ -32,17 +37,8 @@
         <build.version.dir>${project.build.outputDirectory}/META-INF/versions</build.version.dir>
     </properties>
 
-    <!-- Use mvn deploy to update. -->
-    <distributionManagement>
-        <repository>
-            <id>local-libs</id>
-            <url>file://${local.lib.repo}</url>
-        </repository>
-    </distributionManagement>
-
     <build>
         <plugins>
-
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

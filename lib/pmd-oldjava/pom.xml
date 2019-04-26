@@ -1,66 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  ~ BSD-style license; for more info see http://pmd.sourceforge.net/license.html
-  -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>net.sourceforge.pmd</groupId>
     <artifactId>pmd-oldjava</artifactId>
     <version>6.14.0-SNAPSHOT</version>
 
-    <name>PMD old java</name>
+    <name>PMD 6.0.x java module</name>
 
     <!-- mvn install the pmd-java with the correct version -->
-    <!-- patch - the language name changed in JavaLanguageModule -->
+    <!-- patch - the language name in JavaLanguageModule -->
     <!--       - the service descriptor in META-INF/services -->
 
-    <properties>
-        <local.lib.repo>${project.basedir}/mvn-repo</local.lib.repo>
-        <jar.artifact.name>${project.artifactId}-${project.version}</jar.artifact.name>
+    <parent>
+        <groupId>net.sourceforge.pmd</groupId>
+        <artifactId>pmd-ui-local-libs</artifactId>
+        <version>1.0</version>
+        <relativePath>../aggregate</relativePath>
+    </parent>
 
+    <properties>
         <oldjava.version>${project.version}</oldjava.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <build.version.dir>${project.build.outputDirectory}/META-INF/versions</build.version.dir>
     </properties>
 
-    <!-- Use mvn deploy to update. -->
-    <distributionManagement>
-        <repository>
-            <id>local-libs</id>
-            <url>file://${local.lib.repo}</url>
-        </repository>
-    </distributionManagement>
-
-
     <build>
         <plugins>
-
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.7.0</version>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>none</phase>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
-            </plugin>
-
 
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

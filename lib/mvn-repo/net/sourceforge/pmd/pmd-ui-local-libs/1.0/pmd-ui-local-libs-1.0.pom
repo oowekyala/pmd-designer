@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ BSD-style license; for more info see http://pmd.sourceforge.net/license.html
+  -->
+
+<!--
+  ~ BSD-style license; for more info see http://pmd.sourceforge.net/license.html
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>net.sourceforge.pmd</groupId>
+    <artifactId>pmd-ui-local-libs</artifactId>
+    <name>Custom libraries parent</name>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+
+    <!-- This is used to build the controlsfx multi-release jar. -->
+    <!-- It's deployed to a local VCSed maven repo. That's because the shade plugin -->
+    <!-- doesn't consider "system"-scoped dependencies. -->
+    <!-- It's not supposed to be pushed to maven central, -->
+    <!-- because it's mostly a hack, and it's the responsibility of the -->
+    <!-- controlsfx project to release an airtight implementation. -->
+    <!-- That doesn't seem to be in their priorities: https://github.com/controlsfx/controlsfx/issues/1014 -->
+
+
+    <properties>
+        <local.lib.repo>${project.basedir}/../mvn-repo</local.lib.repo>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <modules>
+        <module>../controlsfx-mr-jar</module>
+        <module>../pmd-oldjava</module>
+    </modules>
+
+    <!-- Use mvn deploy to update. -->
+    <distributionManagement>
+        <repository>
+            <id>local-libs</id>
+            <url>file://${local.lib.repo}</url>
+        </repository>
+    </distributionManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.7.0</version>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <phase>none</phase>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
