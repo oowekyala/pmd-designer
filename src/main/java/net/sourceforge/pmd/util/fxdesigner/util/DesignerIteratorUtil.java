@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -111,6 +111,9 @@ public final class DesignerIteratorUtil {
         return count;
     }
 
+    public static <T> Stream<T> prepend(T head, Stream<T> tail) {
+        return Stream.concat(Stream.of(head), tail);
+    }
 
     public static <T> Iterable<T> asReversed(final List<T> lst) {
 

@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -6,7 +6,9 @@ package net.sourceforge.pmd.util.fxdesigner.util;
 
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.any;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.iteratorFrom;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.prepend;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.reverse;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.takeWhile;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toStream;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.or;
@@ -16,8 +18,11 @@ import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSy
 import static net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.rangeOf;
 
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
+
+import org.apache.commons.lang3.mutable.MutableInt;
 
 import net.sourceforge.pmd.lang.ast.Node;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.PmdCoordinatesSystem.TextPos2D;
@@ -122,21 +127,51 @@ public final class AstTraversalUtil {
     /**
      * Returns an iterator over the parents of the given node, in innermost to outermost order.
      */
+    public static Stream<Node> parentStream(Node deepest, boolean includeSelf) {
+        return toStream(parentIterator(deepest, includeSelf));
+    }
+
+    /**
+     * Returns an iterator over the parents of the given node, in innermost to outermost order.
+     */
     public static <T> Iterator<TreeItem<T>> parentIterator(TreeItem<T> deepest, boolean includeSelf) {
         return iteratorFrom(deepest, n -> n.getParent() != null, TreeItem::getParent, includeSelf);
     }
 
+    public static Stream<Node> descendantStream(Node root, boolean includeSelf) {
+        Stream<Node> strictDescendants = childrenStream(root).flatMap(it -> prepend(it, childrenStream(it)));
+        return includeSelf ? prepend(root, strictDescendants) : strictDescendants;
+    }
+
+    public static Stream<Node> childrenStream(Node root) {
+        MutableInt i = new MutableInt();
+        Stream<Node> infinite = Stream.generate(
+            () -> {
+                int cur = i.getAndIncrement();
+                if (cur < root.jjtGetNumChildren()) {
+                    return root.jjtGetChild(cur);
+                } else {
+                    return null;
+                }
+            }
+        );
+        return takeWhile(infinite, Objects::nonNull);
+    }
+
 
     public static Stream<Node> singleChildPathStream(Node base, boolean outwards) {
-        return outwards ? base.asStream()
-                              .ancestors()
-                              .takeWhile(it -> it.jjtGetNumChildren() == 1)
-                              .prepend(base.asStream())
-                              .toStream()
-                        : toStream(iteratorFrom(base,
-                                                n -> n.jjtGetNumChildren() == 1,
-                                                n -> n.jjtGetChild(0),
-                                                true));
+        if (outwards) {
+            return prepend(base,
+                           takeWhile(
+                               parentStream(base, false),
+                               it -> it.jjtGetNumChildren() == 1
+                           ));
+        } else {
+            return toStream(iteratorFrom(base,
+                                         n -> n.jjtGetNumChildren() == 1,
+                                         n -> n.jjtGetChild(0),
+                                         true));
+        }
 
     }
 

@@ -38,6 +38,7 @@ import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManager;
 import net.sourceforge.pmd.util.fxdesigner.app.services.ASTManagerImpl;
 import net.sourceforge.pmd.util.fxdesigner.popups.AuxclasspathSetupController;
+import net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
@@ -153,8 +154,8 @@ public class SourceEditorController extends AbstractController {
                       Node newAst = n._1;
                       Node oldAst = n._2;
                       if (newAst != null && oldAst != null) {
-                          int newCount = newAst.descendantStream().count();
-                          int oldCount = oldAst.descendantStream().count();
+                          int newCount = (int) AstTraversalUtil.descendantStream(newAst, true).count();
+                          int oldCount = (int) AstTraversalUtil.descendantStream(oldAst, true).count();
                           double change = newCount * 100.0 / oldCount;
                           String percentChange = new DecimalFormat("##.#").format(change) + "% of old";
 
@@ -189,6 +190,10 @@ public class SourceEditorController extends AbstractController {
         initTreeView(oldAstManager, oldAstTreeView, oldAstTitledPane.errorMessageProperty());
 
         getDesignerRoot().registerService(DesignerRoot.RICH_TEXT_MAPPER, nodeEditionCodeArea);
+
+        if (StringUtils.isBlank(getText())) {
+            setText(getDefaultText());
+        }
     }
 
 
