@@ -371,7 +371,7 @@ public class SourceEditorController extends AbstractController {
         case "PrimaryExpression":
         case "VariableInitializer":
         case "Type":
-//        case "TypeBound":
+        case "TypeBound":
         case "WildcardBound":
         case "ReferenceType":
         case "RSIGNEDSHIFT":

@@ -4,31 +4,16 @@ class Foo {
     This is a custom designer crafted to diff between the prototype Java grammar
     for 7.0.0 and the current grammar. You can see both trees to the right.
     Node selection should be in sync. Also there's a javadoc viewer on the left.
-    (also there's a nicer XPath export wizard but I only include it
-     because that branch fixes some critical performance issues)
 
     The 6.0.x tree can be color-coded to highlight differences. Key:
     * Red: removed node. Turned into an interface in the code most of the time.
     * Yellow: proposed removal, to be thought about
-
-    Those are all nodes whose presence doesn't add anything to the tree and
-    which in all cases were worked around in rules. Using interfaces declutters
-    the tree, removes inconsistencies, and makes it look like more of an AST
-    than a parse tree.
-
-    I ran some benchmarks to compare the old parser to this one.
-    * Parsing performance is equivalent
-    * ASTs are on average about 60% as big (they're smaller)
-      * They're also around 3 to 6 nodes less deep, depending on the metric
-    * Since the AST is more compact, the runtime of a full visitor traversal
-      is decreased on average by 12%
 
   */
 
 
     /*
        EXPRESSIONS
-       * Full changelog at the bottom
      */
 
     {
@@ -42,7 +27,7 @@ class Foo {
         boolean b = true;  // BooleanLiteral
         Class<String> klass = String.class;     // ClassLiteral
 
-        // ParenthesizedExpression/NullLiteral
+        // NullLiteral[@Parenthesized = true()]
         // easier than Expression/PrimaryExpression/PrimaryPrefix/Expression/PrimaryExpression/PrimaryPrefix/Literal/NullLiteral
         Object k = (null);
 
@@ -57,11 +42,22 @@ class Foo {
         // Same for MultiplicativeExpression
         q = 2 * 3 * b / 1;
 
+        // Notice that the tree is the same, even with parentheses
+        // Semantically equivalent expressions that differ only by parentheses
+        // are parsed the same
+        q = (2 * 3) * b / 1;
+        // Here, the parens are necessary, yet don't introduce a new level of nesting
+        // Check out the @Parenthesized attribute, and @ParenthesisDepth
+        q = 1 * (2 + 3);
+        // Another equivalent expr, with different @ParenthesisDepth attrs
+        q = (1 * ((2 + 3)));
+
+
         // ArrayAllocation and ConstructorCall replace AllocationExpression
 
         // ArrayAllocation
         int[] is = new int[] {1, 2};
-        is = new int[2];
+        is = new @A int[2];
 
         // ConstructorCall
         me = new Foo();
@@ -184,6 +180,7 @@ class Foo {
     // Intersection types
 
     // This type parameter is an IntersectionType
+    // Notice TypeBound is removed
     <T extends Foo & Bar> void foo(T t) {
         Object me = null;
 
@@ -193,62 +190,3 @@ class Foo {
         me = (Foo & Bar) me;
     }
 }
-
-
-    /*
-
-Changelog for the Expression grammar
-  * Make ASTVariableInitializer, ASTExpression, ASTPrimaryExpression, ASTLiteral interfaces
-  * Implement #1661 for MultiplicativeExpression and AdditiveExpression
-  * Introduce new node types:
-    * ASTClassLiteral, ASTNumericLiteral, ASTStringLiteral, ASTCharLiteral
-      * those divide the work of ASTLiteral, they implement it along with preexisting ASTBooleanLiteral, ASTNullLiteral
-    * ASTFieldAccess
-      * Only when it has a LHS, e.g. "a.b"
-      * Only pushed when we're certain this cannot be a FQCN or type member
-    * ASTVariableReference
-      * Unqualified reference to a variable
-    * ASTAmbiguousName
-      * For those names that are *syntactically* ambiguous
-      * Most of them aren't semantically ambiguous, even with no auxclasspath, meaning
-        they can be rewritten to a more meaningful node (a VariableReference or FieldAccess).
-        The attribute AmbiguousName/@SemanticCheck makes a (very simple) disambiguation
-        using the current (full of holes) symbol table and other easy to grab stuff:
-        * If there's a variable in scope with the name, then it's classified as EXPR
-        * Otherwise, if there's a static import with the given name, then it's classified as EXPR
-        * Otherwise, if there's an import with the given name, it's classified as TYPE
-        * Otherwise, it's classified as AMBIGUOUS
-        * Many scenarios where there's no ambiguity without auxclasspath are not covered
-        * With an auxclasspath and a proper symbol table, we could reclassify them all
-
-        This is a very simple prototype, any real implementation would use the more precise
-        JLS rules and some more heuristics.
-        I found that nevertheless, around 90% of syntactically ambiguous names are
-        semantically unambiguous using those simple rules (that was observed on several
-        large codebases). This is without any auxclasspath support.
-
-    * ASTMethodCall
-      * Doesn't use ASTArguments anymore, ASTArgumentsList is enough
-    * ASTParenthesizedExpression
-    * ASTArrayAccess
-    * ASTAssignmentExpression
-    * ASTArrayAllocation, ASTConstructorCall
-      * those replace ASTAllocationExpression
-    * ASTThisExpression, ASTSuperExpression
-      * those enclose their qualifier if any
-  * Remove unnecessary node types:
-    * ASTPrimarySuffix and ASTPrimaryPrefix
-      * they're productions, not nodes
-    * ASTUnaryExpressionNotPlusMinus
-      * Merged into ASTUnaryExpression
-    * ASTAssignmentOperator
-      * made obsolete by ASTAssignmentExpression
-    * ASTArguments
-      * To remove it, ASTExplicitConstructorInvocation must be changed too
-    * ASTVariableInitializer
-      * Is superseded by ASTExpression, through making ASTArrayInitializer implement ASTExpression.
-        This is only logical, they're expressions according to JLS. See deprecation note.
-    * ASTRSIGNEDSHIFT, ASTRUNSIGNEDSHIFT
-    * ASTAllocationExpression
-      * The concrete node is replaced by ASTConstructorCall and ASTArrayAllocation, though we could make it an interface instead of removing it
-*/

@@ -139,7 +139,7 @@ public final class AstTraversalUtil {
     }
 
     public static Stream<Node> descendantStream(Node root, boolean includeSelf) {
-        Stream<Node> strictDescendants = childrenStream(root).flatMap(it -> prepend(it, childrenStream(it)));
+        Stream<Node> strictDescendants = childrenStream(root).flatMap(it -> descendantStream(it, true));
         return includeSelf ? prepend(root, strictDescendants) : strictDescendants;
     }
 
