@@ -1,24 +1,24 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
 package net.sourceforge.pmd.util.fxdesigner.util.codearea;
 
+import static java.lang.Integer.parseInt;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.parentIterator;
 import static net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil.singleChildPathStream;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.last;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil.toIterable;
 
-import java.util.Collection;
+import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.fxmisc.richtext.CodeArea;
-import org.fxmisc.richtext.model.Paragraph;
 import org.fxmisc.richtext.model.TwoDimensional.Bias;
 import org.fxmisc.richtext.model.TwoDimensional.Position;
 
@@ -30,11 +30,10 @@ import net.sourceforge.pmd.util.fxdesigner.util.DesignerIteratorUtil;
  * Maps PMD's (line, column) coordinate system to and from the code
  * area's one-dimensional (absolute offset-based) system.
  *
- * @since 6.13.0
  * @author Clément Fournier
+ * @since 6.13.0
  */
 public final class PmdCoordinatesSystem {
-    private static final Pattern TAB_INDENT = Pattern.compile("^(\t*).*$");
 
 
     private PmdCoordinatesSystem() {
@@ -44,6 +43,7 @@ public final class PmdCoordinatesSystem {
     public static int getRtfxParIndexFromPmdLine(int line) {
         return line - 1;
     }
+
 
     public static int getPmdLineFromRtfxParIndex(int line) {
         return line + 1;
@@ -56,11 +56,10 @@ public final class PmdCoordinatesSystem {
      */
     public static TextPos2D getPmdLineAndColumnFromOffset(CodeArea codeArea, int absoluteOffset) {
 
-        Position pos = codeArea.offsetToPosition(absoluteOffset, Bias.Backward);
-        int indentationOffset = indentationOffset(codeArea, pos.getMajor());
+        Position pos = codeArea.offsetToPosition(absoluteOffset, Bias.Forward);
 
         return new TextPos2D(getPmdLineFromRtfxParIndex(pos.getMajor()),
-                             pos.getMinor() + indentationOffset + 1);
+                             getPmdColumnIndexFromRtfxColumn(codeArea, pos.getMajor(), pos.getMinor()));
     }
 
 
@@ -68,30 +67,48 @@ public final class PmdCoordinatesSystem {
      * Returns the absolute offset of the given pair (line, column) as computed by
      * a PMD parser in the code area.
      *
-     * CodeArea counts a tab as 1 column width but displays it as 8 columns width.
+     * <ul>
+     * <li>CodeArea counts a tab as 1 column width but displays it as 8 columns width.
      * PMD counts it correctly as 8 columns, so the position must be offset.
-     *
-     * Also, PMD lines start at 1 but paragraph nums start at 0 in the code area.
+     * <li>PMD lines start at 1 but paragraph nums start at 0 in the code area,
+     * same for columns.
+     * <li>PMD's end column is inclusive and not exclusive.
+     * </ul>
      */
     public static int getOffsetFromPmdPosition(CodeArea codeArea, int line, int column) {
-        int base = codeArea.getAbsolutePosition(getRtfxParIndexFromPmdLine(line), column)
-            - indentationOffset(codeArea, line - 1);
-
-        return clip(base, 0, codeArea.getLength());
-    }
-
-    private static int clip(int toClip, int min, int max) {
-        return Math.max(min, Math.min(toClip, max));
+        int parIdx = getRtfxParIndexFromPmdLine(line);
+        int raw = codeArea.getAbsolutePosition(parIdx, getRtfxColumnIndexFromPmdColumn(codeArea, parIdx, column));
+        return clip(raw, 0, codeArea.getLength() - 1);
     }
 
 
-    private static int indentationOffset(CodeArea codeArea, int paragraph) {
-        Paragraph<Collection<String>, String, Collection<String>> p = codeArea.getParagraph(paragraph);
-        Matcher m = TAB_INDENT.matcher(p.getText());
-        if (m.matches()) {
-            return m.group(1).length() * 7;
+    private static int getRtfxColumnIndexFromPmdColumn(CodeArea codeArea, int parIdx, int column) {
+        String parTxt = codeArea.getParagraph(parIdx).getText();
+        int end = column - 1;
+        for (int i = 0; i < end && end > 0; i++) {
+            char c = parTxt.charAt(i);
+            if (c == '\t') {
+                end = max(end - 7, 0);
+            }
         }
-        return 0;
+        return end;
+    }
+
+    private static int getPmdColumnIndexFromRtfxColumn(CodeArea codeArea, int parIdx, int rtfxCol) {
+        String parTxt = codeArea.getParagraph(parIdx).getText();
+        int mapped = rtfxCol;
+        for (int i = 0; i < rtfxCol && i < parTxt.length(); i++) {
+            char c = parTxt.charAt(i);
+            if (c == '\t') {
+                mapped += 7;
+            }
+        }
+        return mapped + 1;
+    }
+
+
+    private static int clip(int val, int min, int max) {
+        return max(min, min(val, max));
     }
 
 
@@ -145,7 +162,6 @@ public final class PmdCoordinatesSystem {
         return null;  // key not found
     }
 
-
     /**
      * Returns the innermost node that covers the entire given text range
      * in the given tree.
@@ -162,7 +178,9 @@ public final class PmdCoordinatesSystem {
                 if (!exact && parentRange.contains(range)) {
                     return parent;
                 } else if (exact && parentRange.equals(range)) {
-                    return findHighestSameRangeParent(parent);
+                    // previously this used node streams to get the highest node
+                    // on a single child path
+                    return parent;
                 } else if (exact && parentRange.contains(range)) {
                     // if it isn't the same, then we can't find better so better stop looking
                     return null;
@@ -171,6 +189,8 @@ public final class PmdCoordinatesSystem {
             return null;
         });
     }
+
+
 
     public static Stream<Node> sameRangePathStream(Node base, boolean outwards) {
         TextRange range = rangeOf(base);
@@ -190,7 +210,7 @@ public final class PmdCoordinatesSystem {
      * Returns true if the given node contains the position.
      */
     public static boolean contains(Node node, TextPos2D pos) {
-        return rangeOf(node).contains(pos);
+        return startPosition(node).compareTo(pos) <= 0 && endPosition(node).compareTo(pos) >= 0;
     }
 
     public static TextPos2D startPosition(Node node) {
@@ -202,13 +222,22 @@ public final class PmdCoordinatesSystem {
         return new TextPos2D(node.getEndLine(), node.getEndColumn());
     }
 
-
     public static TextRange rangeOf(Node node) {
         return new TextRange(startPosition(node), endPosition(node));
     }
 
+    /**
+     * Returns a {@link TextPos2D} that uses its coordinates as begin
+     * and end offset of the [node] in the [area].
+     */
+    public static TextPos2D rtfxRangeOf(Node node, CodeArea area) {
+        return new TextPos2D(
+            getOffsetFromPmdPosition(area, node.getBeginLine(), node.getBeginColumn()),
+            getOffsetFromPmdPosition(area, node.getEndLine(), node.getEndColumn())
+        );
+    }
 
-    public static final class TextRange {
+    public static final class TextRange implements Serializable {
 
         public final TextPos2D startPos;
         public final TextPos2D endPos;
@@ -247,23 +276,32 @@ public final class PmdCoordinatesSystem {
 
         @Override
         public String toString() {
-            return "[" + startPos + ", " + endPos + ']';
+            return "[" + startPos + " - " + endPos + ']';
+        }
+
+        public static TextRange fullLine(int line, int lineLength) {
+            return new TextRange(new TextPos2D(line, 0), new TextPos2D(line, lineLength));
+        }
+
+        /** Compatible with {@link #toString()} */
+        public static TextRange fromString(String str) {
+            String[] split = str.split("-");
+            return new TextRange(TextPos2D.fromString(split[0]), TextPos2D.fromString(split[1]));
         }
     }
+
 
     /**
      * {@link Position} keeps a reference to the codearea we don't need.
      *
      * @author Clément Fournier
      */
-    public static final class TextPos2D implements Comparable<TextPos2D> {
-
-        public final int line;
-        public final int column;
-
+    public static final class TextPos2D implements Comparable<TextPos2D>, Serializable {
 
         public static final Comparator<TextPos2D> COMPARATOR =
             Comparator.<TextPos2D>comparingInt(o -> o.line).thenComparing(o -> o.column);
+        public final int line;
+        public final int column;
 
 
         public TextPos2D(int line, int column) {
@@ -311,6 +349,12 @@ public final class PmdCoordinatesSystem {
         @Override
         public int compareTo(TextPos2D o) {
             return COMPARATOR.compare(this, o);
+        }
+
+        /** Compatible with {@link #toString()} */
+        public static TextPos2D fromString(String str) {
+            String[] split = str.replaceAll("[^,\\d]", "").split(",");
+            return new TextPos2D(parseInt(split[0]), parseInt(split[1]));
         }
     }
 }

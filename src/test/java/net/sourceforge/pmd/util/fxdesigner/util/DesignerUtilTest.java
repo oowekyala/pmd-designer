@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -17,8 +17,8 @@ public class DesignerUtilTest {
 
     @Test
     public void testGetFxml() {
-        assertNotNull(DesignerUtil.getFxml("designer.fxml"));
-        assertNotNull(DesignerUtil.getFxml("xpath-rule-editor.fxml"));
+        assertNotNull(DesignerUtil.getFxml("designer"));
+        assertNotNull(DesignerUtil.getFxml("xpath-rule-editor"));
     }
 
 

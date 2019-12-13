@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,7 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.reactfx.Subscription;
 import org.reactfx.value.Var;
 
@@ -35,14 +38,19 @@ import net.sourceforge.pmd.lang.symboltable.NameDeclaration;
 import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
 import net.sourceforge.pmd.lang.symboltable.Scope;
 import net.sourceforge.pmd.lang.symboltable.ScopedNode;
+import net.sourceforge.pmd.util.designerbindings.RelatedNodesSelector;
+import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 
+import com.sun.javafx.fxml.builder.ProxyBuilder;
 import javafx.beans.property.Property;
 import javafx.beans.value.ObservableValue;
+import javafx.scene.Parent;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.util.BuilderFactory;
 import javafx.util.Callback;
 import javafx.util.StringConverter;
 
@@ -56,11 +64,29 @@ public final class DesignerUtil {
     private static final Pattern EXCEPTION_PREFIX_PATTERN = Pattern.compile("(?:(?:\\w+\\.)*\\w+:\\s*)*\\s*(.*)$", Pattern.DOTALL);
 
     private static final Pattern JJT_ACCEPT_PATTERN = Pattern.compile("net.sourceforge.pmd.lang.\\w++.ast.AST(\\w+).jjtAccept");
+    public static final String DESIGNER_DOC_URL = "https://pmd.github.io/latest/pmd_userdocs_extending_designer_reference.html";
+    public static final String DESIGNER_NEW_ISSUE_URL = "https://github.com/pmd/pmd-designer/issues/new/choose";
 
 
     private DesignerUtil() {
 
     }
+
+
+    public static <T> Set<T> setOf(T... ts) {
+        LinkedHashSet<T> set = new LinkedHashSet<>(ts.length);
+        Collections.addAll(set, ts);
+        return set;
+    }
+
+    public static <T> Set<T> setOf(T ts) {
+        return Collections.singleton(ts);
+    }
+
+    public static <T> Set<T> setOf() {
+        return Collections.emptySet();
+    }
+
 
     /**
      * Was added in java 9...
@@ -79,15 +105,44 @@ public final class DesignerUtil {
     }
 
 
+
+
     /**
      * Gets the URL to an fxml file from its simple name.
      *
-     * @param simpleName Simple name of the file, i.e. with no directory prefixes
+     * @param simpleName Simple name of the file, i.e. with no directory prefixes or extension
      *
      * @return A URL to an fxml file
      */
     public static URL getFxml(String simpleName) {
-        return DesignerUtil.class.getResource("/net/sourceforge/pmd/util/fxdesigner/fxml/" + simpleName);
+        return getResource("fxml/" + simpleName + ".fxml");
+    }
+
+    /**
+     * Gets the URL to a file from its simple name.
+     *
+     * @return A URL to a file
+     */
+    public static URL getResource(String resRelativeToDesignerDir) {
+        return DesignerUtil.class.getResource("/net/sourceforge/pmd/util/fxdesigner/" + resRelativeToDesignerDir);
+    }
+
+    /**
+     * Gets the URL to an css file from its simple name.
+     *
+     * @param simpleName Simple name of the file, i.e. with no directory prefixes or extension
+     *
+     * @return A URL to a css file
+     */
+    public static URL getCss(String simpleName) {
+        return getResource("css/" + simpleName + ".css");
+    }
+
+    public static void addCustomStyleSheets(Parent target, String... styleSheetSimpleName) {
+        Arrays.stream(styleSheetSimpleName)
+              .map(DesignerUtil::getCss)
+              .map(URL::toExternalForm)
+              .forEach(target.getStylesheets()::add);
     }
 
 
@@ -251,7 +306,12 @@ public final class DesignerUtil {
     }
 
 
-    public static List<NameOccurrence> getNameOccurrences(ScopedNode node) {
+    public static RelatedNodesSelector getDefaultRelatedNodesSelector() {
+        return node -> node instanceof ScopedNode ? getNameOccurrences((ScopedNode) node)
+                                                  : Collections.emptyList();
+    }
+
+    private static List<Node> getNameOccurrences(ScopedNode node) {
 
         // For MethodNameDeclaration the scope is the method scope, which is not the scope it is declared
         // in but the scope it declares! That means that getDeclarations().get(declaration) returns null
@@ -282,6 +342,7 @@ public final class DesignerUtil {
 
                              return usages;
                          })
+                         .map(it -> it.stream().<Node>map(NameOccurrence::getLocation).collect(Collectors.toList()))
                          .orElse(Collections.emptyList());
     }
 
@@ -356,4 +417,21 @@ public final class DesignerUtil {
         }
     }
 
+    public static BuilderFactory customBuilderFactory(@NonNull DesignerRoot owner) {
+        return type -> {
+
+            boolean needsRoot = Arrays.stream(type.getConstructors()).anyMatch(it -> ArrayUtils.contains(it.getParameterTypes(), DesignerRoot.class));
+
+            if (needsRoot) {
+                // Controls that need the DesignerRoot can declare a constructor
+                // with a parameter w/ signature @NamedArg("designerRoot") DesignerRoot
+                // to be injected with the relevant instance of the app.
+                ProxyBuilder<Object> builder = new ProxyBuilder<>(type);
+                builder.put("designerRoot", owner);
+                return builder;
+            } else {
+                return null; //use default
+            }
+        };
+    }
 }

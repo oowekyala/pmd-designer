@@ -1,3 +1,7 @@
+/*
+ * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
+ */
+
 package net.sourceforge.pmd.util.fxdesigner.app.services;
 
 import java.io.IOException;
@@ -19,6 +23,8 @@ import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 public class GlobalDiskManagerImpl implements GlobalDiskManager, ApplicationComponent {
 
 
+    public static final String APPSTATE_NAME = "appstate.xml";
+    private static final String STAMP_PREFIX = "version-";
     private final DesignerRoot root;
     private final Path settingsDirectory;
     private final ResourceManager globalResourceManager;
@@ -29,26 +35,21 @@ public class GlobalDiskManagerImpl implements GlobalDiskManager, ApplicationComp
         this.globalResourceManager = new ResourceManager(root, settingsDirectory.resolve("resources"));
 
 
-        Path curVersionStamp = settingsDirectory.resolve("version-" + Designer.VERSION);
+        Path curVersionStamp = settingsDirectory.resolve("version-" + Designer.getCurrentVersion());
 
 
         List<Path> diskVersionStamps = getDiskVersionStamps();
-        //        if (diskVersionStamps.stream().anyMatch(p -> p.getFileName().equals(curVersionStamp.getFileName()))) {
-        //            // up2date
-        //        } else {
+        //        if (diskVersionStamps.stream().noneMatch(curVersionStamp::equals)) {
         //            // TODO you can now do something if we detected another version
         //        }
-        diskVersionStamps.forEach(path -> {
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
 
         try {
             Files.createDirectories(settingsDirectory);
+
+            for (Path stamp : diskVersionStamps) {
+                Files.deleteIfExists(stamp);
+            }
+
             if (!Files.exists(curVersionStamp)) {
                 Files.createFile(curVersionStamp);
             }
@@ -61,7 +62,7 @@ public class GlobalDiskManagerImpl implements GlobalDiskManager, ApplicationComp
         try {
             return Files.list(settingsDirectory)
                         .filter(it -> !Files.isDirectory(it))
-                        .filter(it -> it.getFileName().startsWith("version-"))
+                        .filter(it -> it.getFileName().toString().startsWith(STAMP_PREFIX))
                         .collect(Collectors.toList());
         } catch (IOException e) {
             return Collections.emptyList();
@@ -69,7 +70,7 @@ public class GlobalDiskManagerImpl implements GlobalDiskManager, ApplicationComp
     }
 
     public Path defaultAppStateFile() {
-        return settingsDirectory.resolve("appstate.xml");
+        return settingsDirectory.resolve(APPSTATE_NAME);
     }
 
     @Override

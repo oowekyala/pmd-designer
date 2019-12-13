@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -8,10 +8,13 @@ import static net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil.resolveResou
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
@@ -20,6 +23,7 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.util.fxdesigner.app.AbstractController;
 import net.sourceforge.pmd.util.fxdesigner.app.services.CloseableService;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 
 import javafx.application.Platform;
 import javafx.beans.NamedArg;
@@ -59,6 +63,7 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
     private final String tabFxmlResource;
     /** Supplier of controllers for each tab. */
     private final Var<Supplier<T>> controllerSupplier = Var.newSimpleVar(() -> null);
+    private final Var<@Nullable Function<? super T, ? extends T>> deepCopyFun = Var.newSimpleVar(null);
 
 
     public MutableTabPane(@NamedArg("tabFxmlContent") String tabFxmlContent) {
@@ -87,55 +92,78 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
     private void initAddButton() {
 
         Val.wrap(tabPane.skinProperty())
-           .values()
-           .filter(Objects::nonNull)
-           .subscribeForOne(skin -> Platform.runLater(() -> {
-               // Basically we superimpose a transparent HBox over the TabPane
-               // it needs to be done in a runLater because we need to access the
-               // TabPane's header region, which is created by the TabPane's skin
-               // on the first layout
+            .values()
+            .filter(Objects::nonNull)
+            .subscribeForOne(skin -> Platform.runLater(this::makeAddButton));
 
-               Region headersRegion = (Region) tabPane.lookup(".headers-region");
+    }
 
-               // a pane that always has the size of the header region,
-               // pushing the new tab button to its right
-               Pane headerSizePane = new Pane();
-               headerSizePane.setMouseTransparent(true);
-               headerSizePane.prefWidthProperty().bind(headersRegion.widthProperty());
+    private void makeAddButton() {
+        // Basically we superimpose a transparent HBox over the TabPane
+        // it needs to be done in a runLater because we need to access the
+        // TabPane's header region, which is created by the TabPane's skin
+        // on the first layout
 
-               // the new tab button
-               Button newTabButton = new Button();
-               newTabButton.getStyleClass().addAll("icon-button", "add-tab-button");
-               newTabButton.setTooltip(new Tooltip("Add new tab"));
-               newTabButton.setGraphic(new FontIcon("fas-plus"));
-               newTabButton.onActionProperty().set(actionEvent -> addTabWithNewController());
-               // bind bounds to a square that fits inside the header's region
-               newTabButton.maxHeightProperty().bind(headersRegion.heightProperty());
-               newTabButton.maxWidthProperty().bind(headersRegion.heightProperty());
+        Region headersRegion = (Region) tabPane.lookup(".headers-region");
 
-               // Rightmost node, grows to fill the rest of the horizontal space
-               Pane spring = new Pane();
-               spring.setMouseTransparent(true);
-               HBox.setHgrow(spring, Priority.ALWAYS);
+        // a pane that always has the size of the header region,
+        // pushing the new tab button to its right
+        Pane headerSizePane = new Pane();
+        headerSizePane.setMouseTransparent(true);
+        headerSizePane.prefWidthProperty().bind(headersRegion.widthProperty());
 
-               HBox box = new HBox();
-               box.getStylesheets().addAll(resolveResource("css/flat.css"), resolveResource("css/designer.css"));
-               // makes the HBox's transparent regions click-through
-               // https://stackoverflow.com/questions/16876083/javafx-pass-mouseevents-through-transparent-node-to-children
-               box.setPickOnBounds(false);
-               box.prefHeightProperty().bind(headersRegion.heightProperty());
+        // the new tab button
+        Button newTabButton = new Button();
+        newTabButton.getStyleClass().addAll("icon-button", "add-tab-button");
+        newTabButton.setTooltip(new Tooltip("Add new tab"));
+        newTabButton.setGraphic(new FontIcon("fas-plus"));
+        newTabButton.onActionProperty().set(actionEvent -> addTabWithNewController());
+        // bind bounds to a square that fits inside the header's region
+        newTabButton.maxHeightProperty().bind(headersRegion.heightProperty());
+        newTabButton.maxWidthProperty().bind(headersRegion.heightProperty());
 
-               box.getChildren().addAll(headerSizePane, newTabButton, spring);
+        // the copy tab button
+        Button copyButton = new Button();
+        copyButton.getStyleClass().addAll("icon-button", "duplicate-tab-button");
+        copyButton.setTooltip(new Tooltip("Duplicate current tab"));
+        copyButton.setGraphic(new FontIcon("far-copy"));
+        copyButton.onActionProperty().set(actionEvent -> {
+            T cur = currentFocusedController().getValue();
+            Function<? super T, ? extends T> copy = deepCopyFun.getValue();
+            if (cur == null || copy == null) {
+                addTabWithNewController();
+            } else {
+                addTabWithController(copy.apply(cur));
+            }
+        });
+        // bind bounds to a square that fits inside the header's region
+        copyButton.maxHeightProperty().bind(headersRegion.heightProperty());
+        copyButton.maxWidthProperty().bind(headersRegion.heightProperty());
 
-               // Fits the HBox's size to the container
-               AnchorPane.setTopAnchor(box, 0d);
-               AnchorPane.setRightAnchor(box, 0d);
-               AnchorPane.setLeftAnchor(box, 0d);
+        copyButton.visibleProperty().bind(ReactfxUtil.isPresentProperty(deepCopyFun));
+        copyButton.managedProperty().bind(copyButton.visibleProperty());
 
-               // don't forget that
-               this.getChildren().addAll(box);
-           }));
+        // Rightmost node, grows to fill the rest of the horizontal space
+        Pane spring = new Pane();
+        spring.setMouseTransparent(true);
+        HBox.setHgrow(spring, Priority.ALWAYS);
 
+        HBox box = new HBox();
+        box.getStylesheets().addAll(resolveResource("css/flat.css"), resolveResource("css/designer.css"));
+        // makes the HBox's transparent regions click-through
+        // https://stackoverflow.com/questions/16876083/javafx-pass-mouseevents-through-transparent-node-to-children
+        box.setPickOnBounds(false);
+        box.prefHeightProperty().bind(headersRegion.heightProperty());
+
+        box.getChildren().addAll(headerSizePane, newTabButton, copyButton, spring);
+
+        // Fits the HBox's size to the container
+        AnchorPane.setTopAnchor(box, 0d);
+        AnchorPane.setRightAnchor(box, 0d);
+        AnchorPane.setLeftAnchor(box, 0d);
+
+        // don't forget that
+        this.getChildren().addAll(box);
     }
 
 
@@ -189,6 +217,9 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
         this.controllerSupplier.setValue(supplier);
     }
 
+    public void setDeepCopyFunction(Function<? super T, ? extends T> deepCopyFun) {
+        this.deepCopyFun.setValue(deepCopyFun);
+    }
 
     /** Retrieves the controller of a tab. */
     @SuppressWarnings("unchecked")
@@ -249,7 +280,10 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
             FXMLLoader loader = new FXMLLoader(url);
 
             if (controller != null) {
-                loader.setControllerFactory(DesignerUtil.controllerFactoryKnowing(controller));
+                List<AbstractController> lst = new ArrayList<>(controller.getChildren());
+                lst.add(0, controller);
+                // TODO this adds the children but not descendants
+                loader.setControllerFactory(DesignerUtil.controllerFactoryKnowing(lst.toArray()));
             }
 
             Parent root;

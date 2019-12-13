@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -50,8 +50,8 @@ class NodeStyleSpan {
     // I originally wrote it like that because I didn't think enough about it,
     // and I don't have time to simplify it before 6.5.0
     public PositionSnapshot snapshot() {
-        int lastKnownStart = getAbsolutePosition(node.getBeginLine(), node.getBeginColumn() - 1);
-        int lastKnownEnd = getAbsolutePosition(node.getEndLine(), node.getEndColumn());
+        int lastKnownStart = getAbsolutePosition(node.getBeginLine(), node.getBeginColumn());
+        int lastKnownEnd = getAbsolutePosition(node.getEndLine(), node.getEndColumn()) + 1; // exclusive
         return new PositionSnapshot(lastKnownStart, lastKnownEnd);
     }
 
@@ -111,7 +111,9 @@ class NodeStyleSpan {
 
         @Override
         public StyledDocument<Collection<String>, String, Collection<String>> getNodeRichText() {
-            return codeArea.subDocument(beginIndex, endIndex);
+            StyledDocument<Collection<String>, String, Collection<String>> richtText;
+            richtText = codeArea.subDocument(beginIndex, endIndex);
+            return richtText;
         }
 
 

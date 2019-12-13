@@ -66,17 +66,18 @@ public final class AstTraversalUtil {
             return Optional.of((Node) node.getUserData());
         }
 
-        Optional<Node> result = or(
-                                    or(
-                                        // first try with path
-                                        findOldNodeInNewAst(node, myRoot),
-                                        // then try with exact range
-                                        () -> findNodeCovering(myRoot, rangeOf(node), true)
-                                    ),
-                                    // fallback on leaf if nothing works
-                                    () -> findNodeAt(myRoot, caretPositionOrNull == null ? endPosition(node)
-                                                                                         : caretPositionOrNull)
-                                );
+        Optional<Node> result =
+            or(
+                or(
+                    // first try with path
+                    findOldNodeInNewAst(node, myRoot),
+                    // then try with exact range
+                    () -> findNodeCovering(myRoot, rangeOf(node), true)
+                ),
+                // fallback on leaf if nothing works
+                () -> findNodeAt(myRoot, caretPositionOrNull == null ? endPosition(node)
+                                                                     : caretPositionOrNull)
+            );
 
         // the [node] is mapped to the [result]
         // since several nodes may map to the same node in another tree,

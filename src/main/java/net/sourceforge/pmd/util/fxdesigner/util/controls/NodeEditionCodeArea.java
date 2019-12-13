@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -17,24 +17,33 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.IntFunction;
-import java.util.stream.Collectors;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.fxmisc.richtext.LineNumberFactory;
 import org.fxmisc.richtext.event.MouseOverTextEvent;
 import org.reactfx.EventSource;
+import org.reactfx.Subscription;
+import org.reactfx.collection.LiveArrayList;
+import org.reactfx.collection.LiveList;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.lang.Language;
+import net.sourceforge.pmd.lang.LanguageVersion;
+import net.sourceforge.pmd.lang.LanguageVersionHandler;
 import net.sourceforge.pmd.lang.ast.Node;
-import net.sourceforge.pmd.lang.symboltable.NameOccurrence;
-import net.sourceforge.pmd.lang.symboltable.ScopedNode;
+import net.sourceforge.pmd.util.designerbindings.DesignerBindings;
+import net.sourceforge.pmd.util.designerbindings.RelatedNodesSelector;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.NodeSelectionSource;
 import net.sourceforge.pmd.util.fxdesigner.app.services.RichTextMapper;
+import net.sourceforge.pmd.util.fxdesigner.model.testing.LiveTestCase;
+import net.sourceforge.pmd.util.fxdesigner.model.testing.LiveViolationRecord;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.codearea.AvailableSyntaxHighlighters;
@@ -46,6 +55,9 @@ import net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil;
 import javafx.application.Platform;
 import javafx.beans.NamedArg;
 import javafx.css.PseudoClass;
+import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
 
 
 /**
@@ -73,28 +85,37 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
     private final Var<Node> currentFocusNode = Var.newSimpleVar(null);
     private final Var<List<Node>> currentRuleResults = Var.newSimpleVar(Collections.emptyList());
     private final Var<List<Node>> currentErrorNodes = Var.newSimpleVar(Collections.emptyList());
-    private final Var<List<NameOccurrence>> currentNameOccurrences = Var.newSimpleVar(Collections.emptyList());
+    private final Var<List<Node>> currentRelatedNodes = Var.newSimpleVar(Collections.emptyList());
     private final DesignerRoot designerRoot;
     private final EventSource<NodeSelectionEvent> selectionEvts = new EventSource<>();
 
-
+    private final Val<RelatedNodesSelector> relatedNodesSelector;
 
     /** Only provided for scenebuilder, not used at runtime. */
     public NodeEditionCodeArea() {
         super(StyleLayerIds.class);
-        designerRoot = null;
+        this.designerRoot = null;
+        this.relatedNodesSelector = null;
     }
 
     public NodeEditionCodeArea(@NamedArg("designerRoot") DesignerRoot root) {
         super(StyleLayerIds.class);
 
         this.designerRoot = root;
+        this.relatedNodesSelector =
+            root.getService(DesignerRoot.AST_MANAGER)
+                .languageVersionProperty()
+                .map(LanguageVersion::getLanguageVersionHandler)
+                .map(LanguageVersionHandler::getDesignerBindings)
+                .map(DesignerBindings::getRelatedNodesSelector)
+                .orElseConst(DesignerUtil.getDefaultRelatedNodesSelector());
 
-        setParagraphGraphicFactory(lineNumberFactory());
+
+        setParagraphGraphicFactory(defaultLineNumberFactory());
 
         currentRuleResultsProperty().values().subscribe(this::highlightXPathResults);
         currentErrorNodesProperty().values().subscribe(this::highlightErrorNodes);
-        currentNameOccurrences.values().subscribe(this::highlightNameOccurrences);
+        currentRelatedNodesProperty().values().subscribe(this::highlightRelatedNodes);
 
         initNodeSelectionHandling(designerRoot, selectionEvts, true);
 
@@ -146,25 +167,27 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         int visibleLength = lastVisibleParToAllParIndex() - firstVisibleParToAllParIndex();
 
         boolean fitsViewPort = node.getEndLine() - node.getBeginLine() <= visibleLength;
-        boolean isStartVisible =
-            getRtfxParIndexFromPmdLine(node.getBeginLine()) >= firstVisibleParToAllParIndex();
-        boolean isEndVisible =
-            getRtfxParIndexFromPmdLine(node.getEndLine()) <= lastVisibleParToAllParIndex();
+        int rtfxLine = getRtfxParIndexFromPmdLine(node.getBeginLine());
+        int rtfxEndLine = getRtfxParIndexFromPmdLine(node.getEndLine());
+
+        boolean isStartVisible = rtfxLine >= firstVisibleParToAllParIndex();
+        boolean isEndVisible = rtfxEndLine <= lastVisibleParToAllParIndex();
+
 
         if (fitsViewPort) {
             if (!isStartVisible && scrollToTop) {
-                showParagraphAtTop(max(node.getBeginLine() - 2, 0));
+                showParagraphAtTop(max(rtfxLine - 2, 0));
             }
             if (!isEndVisible) {
-                showParagraphAtBottom(min(node.getEndLine(), getParagraphs().size()));
+                showParagraphAtBottom(min(rtfxEndLine, getParagraphs().size()));
             }
         } else if (!isStartVisible && scrollToTop) {
-            showParagraphAtTop(max(node.getBeginLine() - 2, 0));
+            showParagraphAtTop(max(rtfxLine - 2, 0));
         }
     }
 
 
-    private IntFunction<javafx.scene.Node> lineNumberFactory() {
+    public IntFunction<javafx.scene.Node> defaultLineNumberFactory() {
         IntFunction<javafx.scene.Node> base = LineNumberFactory.get(this);
         Val<Integer> activePar = Val.wrap(currentParagraphProperty());
 
@@ -186,6 +209,47 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         };
     }
 
+    public IntFunction<javafx.scene.Node> testCaseLineNumberFactory(LiveTestCase liveTestCase) {
+        IntFunction<javafx.scene.Node> base = defaultLineNumberFactory();
+
+
+        Val<Map<Integer, LiveList<LiveViolationRecord>>> mapVal = ReactfxUtil.groupBy(liveTestCase.getExpectedViolations(), (LiveViolationRecord v) -> v.getRange().startPos.line);
+
+        Subscription pin = mapVal.pin();
+
+        liveTestCase.addCommitHandler(t -> pin.unsubscribe());
+
+        Val<IntFunction<Val<Integer>>> map1 = mapVal.map(it -> (int j) -> Optional.ofNullable(it.get(j)).orElse(new LiveArrayList<>()).sizeProperty());
+
+        IntFunction<Val<Integer>> numViolationsPerLine = i -> map1.flatMap(it -> it.apply(i));
+
+        return idx -> {
+            javafx.scene.Node label = base.apply(idx);
+
+            HBox hBox = new HBox();
+
+            hBox.setSpacing(3);
+
+
+            Label foo = buildExpectedLabel(numViolationsPerLine, idx);
+
+            hBox.getChildren().addAll(foo, label);
+
+            return hBox;
+        };
+    }
+
+    @NonNull
+    public Label buildExpectedLabel(IntFunction<Val<Integer>> numViolationsPerLine, int idx) {
+        Label foo = new Label();
+        foo.getStyleClass().addAll("num-violations-gutter-label");
+        Val<Integer> num = numViolationsPerLine.apply(idx + 1);
+        foo.textProperty().bind(num.map(Object::toString));
+        foo.setTooltip(new Tooltip("Number of violations expected on this line"));
+        foo.visibleProperty().bind(num.map(it -> it > 0));
+        return foo;
+    }
+
 
     public final Var<List<Node>> currentRuleResultsProperty() {
         return currentRuleResults;
@@ -197,8 +261,8 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
     }
 
 
-    public Var<List<NameOccurrence>> currentNameOccurrencesProperty() {
-        return currentNameOccurrences;
+    public Var<List<Node>> currentRelatedNodesProperty() {
+        return currentRelatedNodes;
     }
 
 
@@ -209,8 +273,8 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
 
 
     /** Highlights name occurrences (secondary highlight). */
-    private void highlightNameOccurrences(Collection<? extends NameOccurrence> occs) {
-        styleNodes(occs.stream().map(NameOccurrence::getLocation).collect(Collectors.toList()), StyleLayerIds.NAME_OCCURRENCE, true);
+    private void highlightRelatedNodes(Collection<? extends Node> occs) {
+        styleNodes(occs, StyleLayerIds.NAME_OCCURRENCE, true);
     }
 
 
@@ -251,9 +315,10 @@ public class NodeEditionCodeArea extends HighlightLayerCodeArea<StyleLayerIds> i
         // editor is only restyled if the selection has changed
         Platform.runLater(() -> styleNodes(node == null ? emptyList() : singleton(node), StyleLayerIds.FOCUS, true));
 
-        if (node instanceof ScopedNode) {
-            // not null as well
-            Platform.runLater(() -> highlightNameOccurrences(DesignerUtil.getNameOccurrences((ScopedNode) node)));
+        if (node == null) {
+            highlightRelatedNodes(emptyList());
+        } else {
+            Platform.runLater(() -> highlightRelatedNodes(relatedNodesSelector.getValue().getHighlightedNodesWhenSelecting(node)));
         }
     }
 

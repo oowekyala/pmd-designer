@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -118,7 +118,7 @@ public abstract class AbstractController implements Initializable, SettingsOwner
     }
 
 
-    protected List<? extends AbstractController> getChildren() {
+    public List<AbstractController> getChildren() {
         return Collections.emptyList();
     }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -155,6 +155,15 @@ public class PropertyDescriptorSpec implements SettingsOwner {
     @Override
     public String toString() {
         return toXml();
+    }
+
+    public PropertyDescriptorSpec deepCopy() {
+        PropertyDescriptorSpec spec = new PropertyDescriptorSpec();
+        spec.setName(getName());
+        spec.setValue(getValue());
+        spec.setDescription(getDescription());
+        spec.setTypeId(getTypeId());
+        return spec;
     }
 
 

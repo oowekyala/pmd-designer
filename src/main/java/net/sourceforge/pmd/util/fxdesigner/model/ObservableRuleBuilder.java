@@ -1,10 +1,13 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
 package net.sourceforge.pmd.util.fxdesigner.model;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.reactfx.collection.LiveArrayList;
 import org.reactfx.collection.LiveList;
@@ -14,9 +17,11 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.Rule;
 import net.sourceforge.pmd.RulePriority;
 import net.sourceforge.pmd.lang.Language;
-import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.rules.RuleBuilder;
+import net.sourceforge.pmd.util.fxdesigner.model.testing.LiveTestCase;
+import net.sourceforge.pmd.util.fxdesigner.model.testing.TestCollection;
+import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentSequence;
@@ -32,13 +37,13 @@ import javafx.collections.ObservableList;
  */
 public class ObservableRuleBuilder implements SettingsOwner {
 
-    private final Var<Language> language = Var.newSimpleVar(LanguageRegistry.getDefaultLanguage());
+    private final Var<Language> language = Var.newSimpleVar(LanguageRegistryUtil.defaultLanguage());
     private final Var<String> name = Var.newSimpleVar(null);
     private final Var<Class<?>> clazz = Var.newSimpleVar(null);
 
     // doesn't contain the "xpath" and "version" properties for XPath rules
-    private LiveList<PropertyDescriptorSpec> ruleProperties = new LiveArrayList<>();
-    private LiveList<String> examples = new LiveArrayList<>();
+    private final LiveList<PropertyDescriptorSpec> ruleProperties = new LiveArrayList<>();
+    private final LiveList<String> examples = new LiveArrayList<>();
 
     private final Var<LanguageVersion> minimumVersion = Var.newSimpleVar(null);
     private final Var<LanguageVersion> maximumVersion = Var.newSimpleVar(null);
@@ -56,10 +61,7 @@ public class ObservableRuleBuilder implements SettingsOwner {
     private final Var<Boolean> usesMultifile = Var.newSimpleVar(false);
     private final Var<Boolean> usesTypeResolution = Var.newSimpleVar(false);
 
-
-    public ObservableRuleBuilder() {
-
-    }
+    private final TestCollection testCollection = new TestCollection(this, Collections.emptyList());
 
 
     @PersistentProperty // CUSTOM?
@@ -111,7 +113,7 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
 
     @PersistentSequence
-    public ObservableList<PropertyDescriptorSpec> getRuleProperties() {
+    public LiveList<PropertyDescriptorSpec> getRuleProperties() {
         return ruleProperties;
     }
 
@@ -123,6 +125,10 @@ public class ObservableRuleBuilder implements SettingsOwner {
 
     public Var<ObservableList<PropertyDescriptorSpec>> rulePropertiesProperty() {
         return Var.fromVal(Val.constant(ruleProperties), this::setRuleProperties);
+    }
+
+    public Optional<PropertyDescriptorSpec> getProperty(String name) {
+        return getRuleProperties().stream().filter(it -> it.getName().equals(name)).findFirst();
     }
 
 
@@ -255,54 +261,17 @@ public class ObservableRuleBuilder implements SettingsOwner {
         this.deprecated.setValue(deprecated);
     }
 
+    public TestCollection getTestCollection() {
+        return testCollection;
+    }
+
+    @Override
+    public List<? extends SettingsOwner> getChildrenSettingsNodes() {
+        return Collections.singletonList(testCollection);
+    }
 
     public Var<Boolean> deprecatedProperty() {
         return deprecated;
-    }
-
-
-    public boolean isUsesDfa() {
-        return usesDfa.getValue();
-    }
-
-
-    public void setUsesDfa(boolean usesDfa) {
-        this.usesDfa.setValue(usesDfa);
-    }
-
-
-    public Var<Boolean> usesDfaProperty() {
-        return usesDfa;
-    }
-
-
-    public boolean isUsesMultifile() {
-        return usesMultifile.getValue();
-    }
-
-
-    public void setUsesMultifile(boolean usesMultifile) {
-        this.usesMultifile.setValue(usesMultifile);
-    }
-
-
-    public Var<Boolean> usesMultifileProperty() {
-        return usesMultifile;
-    }
-
-
-    public boolean getUsesTypeResolution() {
-        return usesTypeResolution.getValue();
-    }
-
-
-    public void setUsesTypeResolution(boolean usesTypeResolution) {
-        this.usesTypeResolution.setValue(usesTypeResolution);
-    }
-
-
-    public Var<Boolean> usesTypeResolutionProperty() {
-        return usesTypeResolution;
     }
 
 
@@ -320,6 +289,33 @@ public class ObservableRuleBuilder implements SettingsOwner {
         }
     }
 
+
+    public ObservableRuleBuilder deepCopy() {
+        ObservableRuleBuilder copy = newBuilder();
+        copy.setName(getName());
+        copy.setDeprecated(isDeprecated());
+        copy.setDescription(getDescription());
+        copy.setMessage(getMessage());
+        copy.setExternalInfoUrl(getExternalInfoUrl());
+        copy.setClazz(getClazz());
+        copy.setExamples(getExamples());
+        copy.setSince(getSince());
+        copy.setLanguage(getLanguage());
+        copy.setMaximumVersion(getMaximumVersion());
+        copy.setMinimumVersion(getMinimumVersion());
+        copy.setPriority(getPriority());
+
+        TestCollection coll = new TestCollection(copy, getTestCollection().getStash().stream().map(LiveTestCase::deepCopy).collect(Collectors.toList()));
+        copy.getTestCollection().rebase(coll);
+        copy.getRuleProperties().addAll(getRuleProperties().stream().map(PropertyDescriptorSpec::deepCopy).collect(Collectors.toList()));
+
+
+        return copy;
+    }
+
+    protected ObservableRuleBuilder newBuilder() {
+        return new ObservableRuleBuilder();
+    }
 
     /**
      * Builds the rule.

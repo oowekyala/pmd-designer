@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -62,6 +62,10 @@ public interface NodeSelectionSource extends ApplicationComponent {
      * @param mySelectionEvents     Stream of nodes that should push an event each time the user selects a node
      *                              from this control. The whole app will sync to this new selection.
      * @param alwaysHandleSelection Whether the component should handle selection events that originated from itself.
+     *
+     * @return A Val reflecting the current global selection for the app.
+     * Note that that Val is lazy and so if you don't subscribe to it or
+     * {@linkplain Val#pin() pin it} you won't see updates!
      */
     default Val<Node> initNodeSelectionHandling(DesignerRoot root,
                                                 EventStream<? extends NodeSelectionEvent> mySelectionEvents,
@@ -80,7 +84,6 @@ public interface NodeSelectionSource extends ApplicationComponent {
         });
         return ReactfxUtil.latestValue(selection.map(it -> it.selected));
     }
-
 
 
     class NodeSelectionEvent {
@@ -117,8 +120,8 @@ public interface NodeSelectionSource extends ApplicationComponent {
                 return false;
             }
             NodeSelectionEvent that = (NodeSelectionEvent) o;
-            return Objects.equals(selected, that.selected) &&
-                Objects.equals(options, that.options);
+            return Objects.equals(selected, that.selected)
+                && Objects.equals(options, that.options);
         }
 
         @Override

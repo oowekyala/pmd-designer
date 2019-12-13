@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -60,7 +60,7 @@ public final class EventLogController extends AbstractController {
 
     private static final PseudoClass NEW_ENTRY = PseudoClass.getPseudoClass("new-entry");
 
-    private static final DateFormat DETAIL_DATEFORMAT = new SimpleDateFormat("HH:mm:ss+SS");
+    private final DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss+SS");
 
     @FXML
     private Label timePrecisionsLabel;
@@ -223,7 +223,7 @@ public final class EventLogController extends AbstractController {
     }
 
     private String timePrecisions(LogEntry entry) {
-        String date = DETAIL_DATEFORMAT.format(entry.getTimestamp());
+        String date = dateFormat.format(entry.getTimestamp());
 
         int idx = eventLogTableView.getItems().indexOf(entry);
         if (idx + 1 < eventLogTableView.getItems().size()) {
@@ -251,7 +251,7 @@ public final class EventLogController extends AbstractController {
 
 
     private Stage createStage(Stage mainStage) {
-        FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("event-log.fxml"));
+        FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("event-log"));
         loader.setController(this);
 
         final Stage dialog = new Stage();

@@ -1,22 +1,19 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
 package net.sourceforge.pmd.util.fxdesigner;
-
-import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.controllerFactoryKnowing;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 import net.sourceforge.pmd.PMDVersion;
 import net.sourceforge.pmd.lang.ast.xpath.Attribute;
@@ -24,8 +21,8 @@ import net.sourceforge.pmd.util.fxdesigner.app.DesignerParams;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRootImpl;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 
-import com.sun.javafx.fxml.builder.ProxyBuilder;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
@@ -45,32 +42,42 @@ import javafx.stage.Stage;
 public class Designer extends Application {
 
     /**
-     * Constant that contains always the current version of PMD.
+     * Constant that contains always the current version of the designer.
      */
-    public static final String VERSION;
+    private static final String VERSION;
+    private static final String PMD_CORE_MIN_VERSION;
     private static final String UNKNOWN_VERSION = "unknown";
-
-    private static final Logger LOG = Logger.getLogger(Designer.class.getName());
 
 
     /**
      * Determines the version from maven's generated pom.properties file.
      */
     static {
-        String pmdVersion = UNKNOWN_VERSION;
-        try (InputStream stream = PMDVersion.class.getResourceAsStream("/META-INF/maven/net.sourceforge.pmd/pmd-ui/pom.properties")) {
+        VERSION = readProperty("/META-INF/maven/net.sourceforge.pmd/pmd-ui/pom.properties", "version").orElse(UNKNOWN_VERSION);
+        PMD_CORE_MIN_VERSION = readProperty(ResourceUtil.resolveResource("designer.properties"), "pmd.core.version").orElse(UNKNOWN_VERSION);
+    }
+
+
+    public static String getCurrentVersion() {
+        return VERSION;
+    }
+
+    public static String getPmdCoreMinVersion() {
+        return PMD_CORE_MIN_VERSION;
+    }
+
+    private static Optional<String> readProperty(String resourcePath, String key) {
+        try (InputStream stream = PMDVersion.class.getResourceAsStream(resourcePath)) {
             if (stream != null) {
                 final Properties properties = new Properties();
                 properties.load(stream);
-                pmdVersion = properties.getProperty("version");
+                return Optional.ofNullable(properties.getProperty(key));
             }
-        } catch (final IOException e) {
-            LOG.log(Level.FINE, "Couldn't determine version of PMD", e);
+        } catch (final IOException ignored) {
+            // fallthrough
         }
-
-        VERSION = pmdVersion;
+        return Optional.empty();
     }
-
 
     private long initStartTimeMillis;
     private DesignerRoot designerRoot;
@@ -82,7 +89,7 @@ public class Designer extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         DesignerParams params = getParameters() == null ? new DesignerParams() : new DesignerParams(getParameters());
-        start(stage, new DesignerRootImpl(stage, params));
+        start(stage, new DesignerRootImpl(stage, params, getHostServices()));
     }
 
 
@@ -99,27 +106,13 @@ public class Designer extends Application {
 
         Logger.getLogger(Attribute.class.getName()).setLevel(Level.OFF);
 
-        System.out.print(stage.getTitle() + " initializing... ");
+        System.out.println(stage.getTitle() + " initializing... ");
 
-        FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("designer.fxml"));
+        FXMLLoader loader = new FXMLLoader(DesignerUtil.getFxml("designer"));
 
         MainDesignerController mainController = new MainDesignerController(owner);
 
-        loader.setBuilderFactory(type -> {
-
-            boolean needsRoot = Arrays.stream(type.getConstructors()).anyMatch(it -> ArrayUtils.contains(it.getParameterTypes(), DesignerRoot.class));
-
-            if (needsRoot) {
-                // Controls that need the DesignerRoot can declare a constructor
-                // with a parameter w/ signature @NamedArg("designerRoot") DesignerRoot
-                // to be injected with the relevant instance of the app.
-                ProxyBuilder<Object> builder = new ProxyBuilder<>(type);
-                builder.put("designerRoot", owner);
-                return builder;
-            } else {
-                return null; //use default
-            }
-        });
+        loader.setBuilderFactory(DesignerUtil.customBuilderFactory(owner));
 
         loader.setControllerFactory(DesignerUtil.controllerFactoryKnowing(
             mainController,
@@ -144,13 +137,14 @@ public class Designer extends Application {
 
         stage.setScene(scene);
 
+        stage.show();
+
         if (!owner.isDeveloperMode()) {
             // only close after initialization succeeded.
-            // but before stage.show to reduce unwanted noise
+            // so that fatal errors thrown by stage.show are not hidden
             System.err.close();
         }
 
-        stage.show();
 
         long initTime = System.currentTimeMillis() - initStartTimeMillis;
 

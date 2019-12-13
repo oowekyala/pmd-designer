@@ -1,3 +1,7 @@
+/*
+ * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
+ */
+
 package net.sourceforge.pmd.util.fxdesigner.util;
 
 import java.util.Objects;
@@ -7,14 +11,14 @@ import java.util.Objects;
  */
 public class Tuple3<A, B, C> {
 
-    public final A _1;
-    public final B _2;
-    public final C _3;
+    public final A first;
+    public final B second;
+    public final C third;
 
     public Tuple3(A a, B b, C c) {
-        this._1 = a;
-        this._2 = b;
-        this._3 = c;
+        this.first = a;
+        this.second = b;
+        this.third = c;
     }
 
     @Override
@@ -26,22 +30,22 @@ public class Tuple3<A, B, C> {
             return false;
         }
         Tuple3<?, ?, ?> tuple3 = (Tuple3<?, ?, ?>) o;
-        return Objects.equals(_1, tuple3._1) &&
-            Objects.equals(_2, tuple3._2) &&
-            Objects.equals(_3, tuple3._3);
+        return Objects.equals(first, tuple3.first)
+            && Objects.equals(second, tuple3.second)
+            && Objects.equals(third, tuple3.third);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(_1, _2, _3);
+        return Objects.hash(first, second, third);
     }
 
     @Override
     public String toString() {
-        return "Tuple3{" +
-            "a=" + _1 +
-            ", b=" + _2 +
-            ", c=" + _3 +
-            '}';
+        return "Tuple3{"
+            + "a=" + first
+            + ", b=" + second
+            + ", c=" + third
+            + '}';
     }
 }

@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -145,8 +145,9 @@ public final class ResourceUtil {
                     maxDepth++;
                 }
 
-                return Files.walk(path, maxDepth).collect(Collectors.toList()); // buffer everything, before closing the filesystem
-
+                try (Stream<Path> pathStream = Files.walk(path, maxDepth)) {
+                    return pathStream.collect(Collectors.toList()); // buffer everything, before closing the filesystem
+                }
             }
         } else {
             Path path = toPath(url);

@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -12,6 +12,9 @@ import org.reactfx.value.Var;
 
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
+
+import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
+import net.sourceforge.pmd.util.fxdesigner.util.DataHolder;
 import net.sourceforge.pmd.util.fxdesigner.util.DataHolder.DataKey;
 
 
@@ -21,7 +24,7 @@ import net.sourceforge.pmd.util.fxdesigner.util.DataHolder.DataKey;
  * @author Clément Fournier
  * @since 6.0.0
  */
-public class LogEntry implements Comparable<LogEntry> {
+public final class LogEntry implements Comparable<LogEntry> {
 
 
     private final Category category;
@@ -140,6 +143,9 @@ public class LogEntry implements Comparable<LogEntry> {
         SYMBOL_FACADE_EXCEPTION("Symbol façade exception"),
         XPATH_EVALUATION_EXCEPTION("XPath evaluation exception"),
 
+        TEST_LOADING_EXCEPTION("XML test loader exception"),
+        TEST_EXPORT_EXCEPTION("XML test export exception"),
+
         // These are "flag" categories that signal that previous exceptions
         // thrown during code or XPath edition may be discarded as uninteresting
         // When in developer mode they're pushed to the event log too
@@ -150,9 +156,11 @@ public class LogEntry implements Comparable<LogEntry> {
         // only relevant to a developer of the app.
         INTERNAL("Internal event", CategoryType.INTERNAL),
         SERVICE_REGISTERING("Service registered", CategoryType.INTERNAL),
-        JAVADOC_SERVICE("Javadoc loading", CategoryType.INTERNAL),
         RESOURCE_MANAGEMENT("Resource manager", CategoryType.INTERNAL),
-        SELECTION_EVENT_TRACING("Selection event", CategoryType.INTERNAL);
+        JAVADOC_SERVICE("Javadoc loading", CategoryType.INTERNAL),
+        SELECTION_EVENT_TRACING("Selection event", CategoryType.INTERNAL),
+        XPATH_EVENT_FORWARDING("XPath update", CategoryType.INTERNAL),
+        TEST_LOADING_EVENT("Test loading request", CategoryType.INTERNAL);
 
         public final String name;
         private final CategoryType type;

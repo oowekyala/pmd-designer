@@ -56,6 +56,9 @@ public class NodeDetailPaneController extends AbstractController implements Node
 
         Val<Node> currentSelection = initNodeSelectionHandling(getDesignerRoot(), EventStreams.never(), false);
 
+        // pin to see updates
+        currentSelection.pin();
+
         hideCommonAttributesProperty()
             .values()
             .distinct()
@@ -87,7 +90,7 @@ public class NodeDetailPaneController extends AbstractController implements Node
                     // TODO the display should be handled in a ListCell
                     result.add(attribute.getName() + " = "
                                    + ((attribute.getValue() != null) ? attribute.getStringValue() : "null"));
-                } catch (Exception e) {
+                } catch (Exception ignored) {
                     // some attributes throw eg numberformat exceptions
                 }
 

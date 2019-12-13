@@ -1,17 +1,17 @@
 language: java
-jdk: openjdk11
 before_install:
   - 'mkdir -p ${HOME}/.m2'
   - 'cp .travis/maven-settings.xml ${HOME}/.m2/settings.xml'
   - 'bash .travis/setup-secrets.sh'
+  - . .travis/install-openjdk.sh
 install: './mvnw install -DskipTests=true -Dmaven.javadoc.skip=true -B -V'
 script:
-  - 'if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then ./mvnw test -B -V; fi'
-  - 'if [ "${TRAVIS_PULL_REQUEST}" = "false" ] && [ "${TRAVIS_SECURE_ENV_VARS}" = "true" ]; then bash .travis/deploy.sh; fi'
+  - 'bash .travis/deploy.sh'
 
 cache:
   directories:
   - "$HOME/.m2"
+  - "$HOME/.cache"
 
 env:
   global:
@@ -32,3 +32,18 @@ env:
 # Used in .m2/settings.xml
 # GPG key used to sign the release jar before uploading to maven central
 #
+
+notifications:
+  webhooks:
+    urls:
+      - https://webhooks.gitter.im/e/0e6dd310db54b96c2653
+      - https://webhooks.gitter.im/e/65efc1ea65175ad23ab6
+      - https://webhooks.gitter.im/e/d93f85750d54f0a8623b
+    on_success: always  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: never     # options: [always|never|change] default: always
+  email:
+    recipients:
+    - andreas.dangel@adangel.org
+    on_success: change
+    on_failure: always

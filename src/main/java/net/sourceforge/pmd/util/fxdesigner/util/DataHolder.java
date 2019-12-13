@@ -1,3 +1,7 @@
+/*
+ * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
+ */
+
 package net.sourceforge.pmd.util.fxdesigner.util;
 
 import java.util.Collections;
@@ -74,7 +78,9 @@ public final class DataHolder {
         private final String name;
 
 
-        public DataKey(String name) {this.name = name;}
+        public DataKey(String name) {
+            this.name = name;
+        }
 
         @Override
         public String toString() {

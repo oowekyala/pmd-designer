@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -9,15 +9,18 @@ import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.VetoableEventStre
 
 import java.io.StringReader;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.reactfx.value.SuspendableVar;
 import org.reactfx.value.Val;
 import org.reactfx.value.Var;
 
-import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.LanguageVersionHandler;
 import net.sourceforge.pmd.lang.Parser;
@@ -27,8 +30,8 @@ import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
 import net.sourceforge.pmd.util.fxdesigner.app.services.LogEntry.Category;
 import net.sourceforge.pmd.util.fxdesigner.model.ParseAbortedException;
+import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.Tuple3;
-import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 
 
 /**
@@ -46,17 +49,19 @@ public class ASTManagerImpl implements ASTManager {
     /**
      * Most up-to-date compilation unit. Is null if the current source cannot be parsed.
      */
-    private final Var<Node> compilationUnit = Var.newSimpleVar(null);
+    private final SuspendableVar<Node> compilationUnit = Var.<Node>newSimpleVar(null).suspendable();
     /**
      * Selected language version.
      */
-    private final Var<LanguageVersion> languageVersion = Var.newSimpleVar(LanguageRegistry.getDefaultLanguage().getDefaultVersion());
+    private final Var<@NonNull LanguageVersion> languageVersion = Var.newSimpleVar(LanguageRegistryUtil.defaultLanguageVersion());
     /**
      * Last valid source that was compiled, corresponds to {@link #compilationUnit}.
      */
-    private Var<String> sourceCode = Var.newSimpleVar("");
+    private SuspendableVar<String> sourceCode = Var.newSimpleVar("").suspendable();
 
     private Var<ParseAbortedException> currentException = Var.newSimpleVar(null);
+
+    private Var<Map<String, String>> ruleProperties = Var.newSimpleVar(Collections.emptyMap());
 
     public ASTManagerImpl(DesignerRoot owner) {
         this.designerRoot = owner;
@@ -69,9 +74,9 @@ public class ASTManagerImpl implements ASTManager {
                   .distinct()
                   .subscribe(tick -> {
 
-                      String source = tick._1;
-                      LanguageVersion version = tick._2;
-                      ClassLoader classLoader = tick._3;
+                      String source = tick.first;
+                      LanguageVersion version = tick.second;
+                      ClassLoader classLoader = tick.third;
 
 
                       if (StringUtils.isBlank(source) || version == null) {
@@ -108,11 +113,10 @@ public class ASTManagerImpl implements ASTManager {
 
 
     @Override
-    public Val<String> sourceCodeProperty() {
-        return sourceCode.orElseConst("");
+    public SuspendableVar<String> sourceCodeProperty() {
+        return sourceCode;
     }
 
-    @PersistentProperty
     @Override
     public String getSourceCode() {
         return sourceCode.getValue();
@@ -136,13 +140,18 @@ public class ASTManagerImpl implements ASTManager {
         return designerRoot;
     }
 
+
+    @Override
+    public Var<Map<String, String>> ruleProperties() {
+        return ruleProperties;
+    }
+
     @Override
     public Var<LanguageVersion> languageVersionProperty() {
         return languageVersion;
     }
 
 
-    @PersistentProperty
     public LanguageVersion getLanguageVersion() {
         return languageVersion.getValue();
     }

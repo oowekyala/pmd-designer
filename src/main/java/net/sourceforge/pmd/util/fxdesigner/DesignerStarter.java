@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -13,7 +13,10 @@ import javafx.application.Application;
  */
 public final class DesignerStarter {
 
-    private static final String MISSING_JAVAFX = "You seem to be missing the JavaFX runtime. Please install JavaFX on your system and try again.";
+    private static final String MISSING_JAVAFX =
+        "You seem to be missing the JavaFX runtime." + System.lineSeparator()
+            + " Please install JavaFX on your system and try again." + System.lineSeparator()
+            + " See https://gluonhq.com/products/javafx/";
 
     private DesignerStarter() {
     }
@@ -29,9 +32,15 @@ public final class DesignerStarter {
 
     @SuppressWarnings("PMD.AvoidCatchingThrowable")
     public static void main(String[] args) {
+
+        String message = null;
         if (!isJavaFxAvailable()) {
-            System.err.println(MISSING_JAVAFX);
-            JOptionPane.showMessageDialog(null, MISSING_JAVAFX);
+            message = MISSING_JAVAFX;
+        }
+
+        if (message != null) {
+            System.err.println(message);
+            JOptionPane.showMessageDialog(null, message);
             System.exit(1);
         }
 

@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -75,7 +75,11 @@ public class NodeParentageCrumbBar extends BreadCrumbBar<Node> implements NodeSe
             if (item == ellipsisCrumb) {
                 button.setText("... (" + numElidedNodes + ")");
                 button.setTooltip(new Tooltip(numElidedNodes + " ancestors are not shown"));
+            } else if (item != null) {
+                button.setText(item.getValue().getXPathNodeName());
+                DragAndDropUtil.registerAsNodeDragSource(button, item.getValue(), getDesignerRoot());
             }
+
             // we use that to communicate the node later on
             button.setUserData(item);
             Val.wrap(button.focusedProperty())

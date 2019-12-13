@@ -1,14 +1,11 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
 package net.sourceforge.pmd.util.fxdesigner.util;
 
-import static net.sourceforge.pmd.lang.LanguageRegistry.findAllVersions;
 import static net.sourceforge.pmd.lang.LanguageRegistry.findLanguageByTerseName;
-import static net.sourceforge.pmd.lang.LanguageRegistry.getDefaultLanguage;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,12 +13,14 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.StringUtils;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.reactfx.value.Val;
 
 import net.sourceforge.pmd.lang.Language;
 import net.sourceforge.pmd.lang.LanguageRegistry;
 import net.sourceforge.pmd.lang.LanguageVersion;
-import net.sourceforge.pmd.lang.Parser;
 
 /**
  * Utilities to extend the functionality of {@link LanguageRegistry}.
@@ -30,6 +29,7 @@ import net.sourceforge.pmd.lang.Parser;
  */
 public final class LanguageRegistryUtil {
 
+    private static final String DEFAULT_LANGUAGE_NAME = "Java";
     private static List<LanguageVersion> supportedLanguageVersions;
     private static Map<String, LanguageVersion> extensionsToLanguage;
 
@@ -37,9 +37,45 @@ public final class LanguageRegistryUtil {
 
     }
 
+    public static LanguageVersion findLanguageVersionByTerseName(String tname) {
+        String[] s = tname.split(" ");
+        Language lang = findLanguageByTerseName(s[0]);
+        return lang.getVersion(s[1]);
+    }
+
+    @NonNull
     public static LanguageVersion defaultLanguageVersion() {
-        Language defaultLanguage = getDefaultLanguage();
-        return defaultLanguage == null ? null : defaultLanguage.getDefaultVersion();
+        return defaultLanguage().getDefaultVersion();
+    }
+
+
+    // TODO need a notion of dialect in core + language services
+    public static boolean isXmlDialect(Language language) {
+        switch (language.getTerseName()) {
+        case "xml":
+        case "pom":
+        case "wsql":
+        case "fxml":
+        case "xsl":
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    public static Language plainTextLanguage() {
+        Language fallback = LanguageRegistry.findLanguageByTerseName(PlainTextLanguage.TERSE_NAME);
+        if (fallback != null) {
+            return fallback;
+        } else {
+            throw new AssertionError("No plain text language?");
+        }
+    }
+
+    @NonNull
+    public static Language defaultLanguage() {
+        Language defaultLanguage = LanguageRegistry.getLanguage(DEFAULT_LANGUAGE_NAME);
+        return defaultLanguage != null ? defaultLanguage : plainTextLanguage();
     }
 
     private static Map<String, LanguageVersion> getExtensionsToLanguageMap() {
@@ -53,6 +89,7 @@ public final class LanguageRegistryUtil {
         return result;
     }
 
+    @Nullable
     public static synchronized LanguageVersion getLanguageVersionFromExtension(String filename) {
         if (extensionsToLanguage == null) {
             extensionsToLanguage = getExtensionsToLanguageMap();
@@ -65,32 +102,47 @@ public final class LanguageRegistryUtil {
         return null;
     }
 
+    private static boolean filterLanguageVersion(LanguageVersion lv) {
+        return !StringUtils.containsIgnoreCase(lv.getLanguage().getName(), "dummy")
+            && !lv.getTerseName().equals("oldjava");
+    }
+
     public static synchronized List<LanguageVersion> getSupportedLanguageVersions() {
         if (supportedLanguageVersions == null) {
-            List<LanguageVersion> languageVersions = new ArrayList<>();
-            for (LanguageVersion languageVersion : findAllVersions()) {
-                if (languageVersion.getLanguage().getTerseName().equals("oldjava")) {
-                    // FORBID explicit old java selection
-                    continue;
-                }
-                Optional.ofNullable(languageVersion.getLanguageVersionHandler())
-                        .map(handler -> handler.getParser(handler.getDefaultParserOptions()))
-                        .filter(Parser::canParse)
-                        .ifPresent(p -> languageVersions.add(languageVersion));
-            }
-            supportedLanguageVersions = languageVersions;
+            supportedLanguageVersions = findAllVersions().stream().filter(LanguageRegistryUtil::filterLanguageVersion).collect(Collectors.toList());
         }
         return supportedLanguageVersions;
     }
 
+    private static List<LanguageVersion> findAllVersions() {
+        return LanguageRegistry.getLanguages().stream().flatMap(l -> l.getVersions().stream()).collect(Collectors.toList());
+    }
+
+    @NonNull
+    public static LanguageVersion getLanguageVersionByName(String name) {
+        return getSupportedLanguageVersions().stream()
+                                             .filter(it -> it.getName().equals(name))
+                                             .findFirst()
+                                             .orElse(defaultLanguageVersion());
+    }
+
+    @NonNull
     public static Stream<Language> getSupportedLanguages() {
         return getSupportedLanguageVersions().stream().map(LanguageVersion::getLanguage).distinct();
     }
 
+    @NonNull
     public static Language findLanguageByShortName(String shortName) {
         return getSupportedLanguages().filter(it -> it.getShortName().equals(shortName))
                                       .findFirst()
-                                      .get();
+                                      .orElse(defaultLanguage());
+    }
+
+    @NonNull
+    public static Language findLanguageByName(String n) {
+        return getSupportedLanguages().filter(it -> it.getName().equals(n))
+                                      .findFirst()
+                                      .orElse(defaultLanguage());
     }
 
     public static Val<LanguageVersion> mapNewJavaToOld(Val<LanguageVersion> newJavaVer) {
@@ -103,10 +155,10 @@ public final class LanguageRegistryUtil {
 
     public static LanguageVersion mapNewJavaToOld(LanguageVersion newJavaVer) {
         return Optional.of(newJavaVer)
-                       .map(LanguageVersion::getTerseName)
-                       .map(it -> it.replace("java", "oldjava"))
-                       .map(LanguageRegistry::findLanguageVersionByTerseName)
-                       .orElseGet(() -> LanguageRegistry.findLanguageByTerseName("oldjava").getDefaultVersion());
+                       .map(LanguageVersion::getVersion)
+                       .map(findLanguageByTerseName("oldjava")::getVersion)
+                       .orElseGet(() -> findLanguageByTerseName("oldjava").getDefaultVersion());
     }
+
 
 }

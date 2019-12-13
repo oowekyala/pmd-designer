@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.lang3.reflect.MethodUtils;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.fxmisc.richtext.StyledTextArea;
 import org.reactfx.EventStream;
 import org.reactfx.EventStreams;
@@ -21,7 +22,6 @@ import org.reactfx.util.Tuples;
 
 import net.sourceforge.pmd.util.fxdesigner.util.controls.ContextMenuWithNoArrows;
 
-import javafx.application.Platform;
 import javafx.collections.ObservableSet;
 import javafx.css.PseudoClass;
 import javafx.event.ActionEvent;
@@ -75,6 +75,7 @@ public final class XPathAutocompleteProvider {
                                     || e.getEventType().equals(KeyEvent.KEY_PRESSED) && e.getCode() == KeyCode.TAB
 
                     )
+                    .conditionOn(autoCompletePopup.showingProperty())
                     .subscribe(e -> {
                         int focusIdx = getFocusIdx();
                         if (focusIdx == -1) {
@@ -88,6 +89,8 @@ public final class XPathAutocompleteProvider {
                     });
 
         EventStream<Integer> changesEventStream = myCodeArea.plainTextChanges()
+                                                            // filter out copy paste
+                                                            .filter(it -> it.getNetLength() == 1)
                                                             .map(characterChanges -> {
                                                                 if (characterChanges.getRemoved().length() > 0) {
                                                                     return characterChanges.getRemovalEnd() - 1;
@@ -111,6 +114,7 @@ public final class XPathAutocompleteProvider {
     }
 
 
+    @Nullable
     private Tuple2<Integer, String> getInsertionPointAndQuery(int searchPoint) {
         String input = myCodeArea.getText();
 
@@ -120,10 +124,12 @@ public final class XPathAutocompleteProvider {
             searchPoint = input.length();
         }
         if (insertionPoint > searchPoint) {
-            throw new StringIndexOutOfBoundsException("Cannot extract query from subtext \"" + input.substring(0, insertionPoint) + "\"");
+            new StringIndexOutOfBoundsException("Cannot extract query from subtext \"" + input.substring(0, insertionPoint) + "\"").printStackTrace();
+            return null;
         }
 
-        input = input.substring(insertionPoint, searchPoint).trim();
+        // don't trim, if there is any whitespace we abort
+        input = input.substring(insertionPoint, searchPoint);
 
         return StringUtils.isAlpha(input) ? Tuples.t(insertionPoint, input.trim()) : null;
     }
@@ -154,7 +160,7 @@ public final class XPathAutocompleteProvider {
                                entryLabel.setPrefHeight(5);
                                CustomMenuItem item = new CustomMenuItem(entryLabel, true);
                                item.setUserData(result);
-                               item.setOnAction(e -> applySuggestion(insertionIndex, input, result.getNodeName()));
+                               item.setOnAction(e -> applySuggestion(insertionIndex, input, result.getStringMatch()));
                                return item;
                            })
                            .collect(Collectors.toList());
@@ -177,7 +183,7 @@ public final class XPathAutocompleteProvider {
 
     private void applySuggestion(int insertionIndex, String toReplace, String replacement) {
         myCodeArea.replaceText(insertionIndex, insertionIndex + toReplace.length(), replacement);
-        Platform.runLater(autoCompletePopup::hide);
+        autoCompletePopup.hide();
     }
 
 

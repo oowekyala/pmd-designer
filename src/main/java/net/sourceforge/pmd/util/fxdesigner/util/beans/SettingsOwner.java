@@ -1,4 +1,4 @@
-/**
+/*
  * BSD-style license; for more info see http://pmd.sourceforge.net/license.html
  */
 
@@ -13,6 +13,8 @@ import java.util.List;
  * tree-like hierarchy, which is explored recursively to build
  * a model of the settings to persist, under the form of a
  * {@link SimpleBeanModelNode}.
+ *
+ * TODO get rid of that and use annotations
  *
  * @author Clément Fournier
  * @since 6.1.0
