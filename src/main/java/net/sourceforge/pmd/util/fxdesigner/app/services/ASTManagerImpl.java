@@ -24,7 +24,9 @@ import org.reactfx.value.Var;
 import net.sourceforge.pmd.lang.LanguageVersion;
 import net.sourceforge.pmd.lang.LanguageVersionHandler;
 import net.sourceforge.pmd.lang.Parser;
+import net.sourceforge.pmd.lang.ast.AstAnalysisContext;
 import net.sourceforge.pmd.lang.ast.Node;
+import net.sourceforge.pmd.lang.ast.RootNode;
 import net.sourceforge.pmd.util.fxdesigner.SourceEditorController;
 import net.sourceforge.pmd.util.fxdesigner.app.ApplicationComponent;
 import net.sourceforge.pmd.util.fxdesigner.app.DesignerRoot;
@@ -195,23 +197,27 @@ public class ASTManagerImpl implements ASTManager {
             throw new ParseAbortedException(e);
         }
 
+        AstAnalysisContext ctx = new AstAnalysisContext() {
 
-        try {
-            languageVersionHandler.getSymbolFacade().start(node);
-        } catch (Exception e) {
-            component.logUserException(e, Category.SYMBOL_FACADE_EXCEPTION);
-        }
-        try {
-            languageVersionHandler.getQualifiedNameResolutionFacade(classLoader).start(node);
-        } catch (Exception e) {
-            component.logUserException(e, Category.QNAME_RESOLUTION_EXCEPTION);
-        }
+            @Override
+            public ClassLoader getTypeResolutionClassLoader() {
+                return classLoader;
+            }
 
-        try {
-            languageVersionHandler.getTypeResolutionFacade(classLoader).start(node);
-        } catch (Exception e) {
-            component.logUserException(e, Category.TYPERESOLUTION_EXCEPTION);
-        }
+            @Override
+            public LanguageVersion getLanguageVersion() {
+                return version;
+            }
+        };
+
+        languageVersionHandler.getProcessingStages().forEach(stage -> {
+            try {
+                stage.processAST((RootNode) node, ctx);
+            } catch (Exception e) {
+                component.logUserException(e, Category.SYMBOL_FACADE_EXCEPTION);
+            }
+
+        });
 
         // Notify that the parse went OK so we can avoid logging very recent exceptions
 

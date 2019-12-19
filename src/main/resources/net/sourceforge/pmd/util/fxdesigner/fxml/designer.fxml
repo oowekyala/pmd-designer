@@ -97,7 +97,7 @@
                         <BorderPane prefHeight="200.0" prefWidth="200.0">
                             <left>
                                 <TabPane id="nodeInfoTabPane"
-                                         prefWidth="300.0" side="LEFT"
+                                         prefWidth="400.0" side="LEFT"
                                          tabClosingPolicy="UNAVAILABLE">
 
                                     <tabs>

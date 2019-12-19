@@ -73,7 +73,6 @@ public final class PlainTextLanguage extends BaseLanguageModule {
                     return null;
                 }
 
-
                 @Override
                 public Node parse(String s, Reader reader) throws ParseException {
                     try {
