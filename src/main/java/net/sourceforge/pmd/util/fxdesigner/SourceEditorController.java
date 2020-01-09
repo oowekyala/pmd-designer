@@ -7,7 +7,7 @@ package net.sourceforge.pmd.util.fxdesigner;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
-import static net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil.defaultLanguageVersion;
+import static net.sourceforge.pmd.util.fxdesigner.util.AuxLanguageRegistry.defaultLanguageVersion;
 import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.latestValue;
 
 import java.io.File;
@@ -50,7 +50,7 @@ import net.sourceforge.pmd.util.fxdesigner.popups.AuxclasspathSetupController;
 import net.sourceforge.pmd.util.fxdesigner.popups.SimplePopups;
 import net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.LanguageRegistryUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.AuxLanguageRegistry;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
@@ -158,7 +158,7 @@ public class SourceEditorController extends AbstractController {
         super(designerRoot);
         ASTManagerImpl astManagerImpl = new ASTManagerImpl(designerRoot);
         this.astManager = astManagerImpl;
-        oldAstManager = new ASTManagerImpl(astManagerImpl, LanguageRegistryUtil::mapNewJavaToOld);
+        oldAstManager = new ASTManagerImpl(astManagerImpl, AuxLanguageRegistry::mapNewJavaToOld);
 
         designerRoot.registerService(DesignerRoot.AST_MANAGER, this.astManager);
         designerRoot.registerService(DesignerRoot.OLD_AST_MANAGER, oldAstManager);
@@ -410,7 +410,7 @@ public class SourceEditorController extends AbstractController {
 
     private void initializeLanguageSelector() {
 
-        languageVersionChoicebox.setConverter(DesignerUtil.stringConverter(LanguageVersion::getName, LanguageRegistryUtil::getLanguageVersionByName));
+        languageVersionChoicebox.setConverter(DesignerUtil.stringConverter(LanguageVersion::getName, AuxLanguageRegistry::getLanguageVersionByName));
 
         getService(DesignerRoot.APP_GLOBAL_LANGUAGE)
             .values()

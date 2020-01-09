@@ -369,7 +369,11 @@ public final class XPathRuleEditorController extends AbstractController implemen
         xpathResultListView.setPlaceholder(emptyLabel);
 
         // we wait a bit to do that, so that the rich text is up to date
-        FxTimer.runLater(Duration.ofMillis(100), () -> xpathResultListView.setItems(results.stream().map(getDesignerRoot().getService(DesignerRoot.RICH_TEXT_MAPPER)::wrapNode).collect(Collectors.toCollection(LiveArrayList::new))));
+        FxTimer.runLater(
+            Duration.ofMillis(100),
+            () -> xpathResultListView.setItems(results.stream()
+                                                      .map(getDesignerRoot().getService(DesignerRoot.RICH_TEXT_MAPPER)::wrapNode)
+                                                      .collect(Collectors.toCollection(LiveArrayList::new))));
 
         this.currentResults.setValue(results);
         // only show the error label here when it's an xpath error

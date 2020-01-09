@@ -204,12 +204,13 @@ public final class MutableTabPane<T extends AbstractController & TitleOwner> ext
 
 
     private void addTabAndFocus(Tab tab) {
-        tab.textProperty().bind(uniqueNameBinding(controllerFromTab(tab).titleProperty(), getTabs().size()));
+        T controller = controllerFromTab(tab);
+        tab.textProperty().bind(uniqueNameBinding(controller.titleProperty(), getTabs().size()));
 
         this.getTabs().add(tab);
         getSelectionModel().select(tab);
         // Finish the initialisation of the tab
-        controllerFromTab(tab).afterParentInit();
+        controller.afterParentInit();
     }
 
 
