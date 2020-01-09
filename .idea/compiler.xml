@@ -11,12 +11,6 @@
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="pmd-ui" target="8" />
-      <module name="pmd-ui (1)" target="8" />
-      <module name="pmd-ui (2)" target="8" />
-      <module name="pmd-ui (3)" target="8" />
     </bytecodeTargetLevel>
-  </component>
-  <component name="JavacSettings">
-    <option name="PREFER_TARGET_JDK_COMPILER" value="false" />
   </component>
 </project>
