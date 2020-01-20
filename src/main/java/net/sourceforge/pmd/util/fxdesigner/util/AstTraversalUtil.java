@@ -41,8 +41,8 @@ public final class AstTraversalUtil {
 
     public static Node getRoot(Node n) {
         return n == null ? null
-                         : n.jjtGetParent() == null
-                           ? n : getRoot(n.jjtGetParent());
+                         : n.getParent() == null
+                           ? n : getRoot(n.getParent());
     }
 
     /**
@@ -93,7 +93,7 @@ public final class AstTraversalUtil {
      * @param newRoot      Not null
      */
     public static Optional<Node> findOldNodeInNewAst(final Node oldSelection, final Node newRoot) {
-        if (oldSelection.jjtGetParent() == null) {
+        if (oldSelection.getParent() == null) {
             return Optional.of(newRoot);
         }
 
@@ -105,10 +105,10 @@ public final class AstTraversalUtil {
 
         for (Node step : toIterable(pathFromOldRoot)) {
 
-            int n = step.jjtGetChildIndex();
+            int n = step.getIndexInParent();
 
-            if (n >= 0 && n < currentNewNode.jjtGetNumChildren()) {
-                currentNewNode = currentNewNode.jjtGetChild(n);
+            if (n >= 0 && n < currentNewNode.getNumChildren()) {
+                currentNewNode = currentNewNode.getChild(n);
             } else {
                 return Optional.empty();
             }
@@ -122,7 +122,7 @@ public final class AstTraversalUtil {
      * Returns an iterator over the parents of the given node, in innermost to outermost order.
      */
     public static Iterator<Node> parentIterator(Node deepest, boolean includeSelf) {
-        return iteratorFrom(deepest, n -> n.jjtGetParent() != null, Node::jjtGetParent, includeSelf);
+        return iteratorFrom(deepest, n -> n.getParent() != null, Node::getParent, includeSelf);
     }
 
     /**

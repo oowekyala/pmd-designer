@@ -120,7 +120,15 @@
                                         </tooltip>
                                     </Button>
                                     <Label fx:id="numNewNodesLabel"/>
-                                </toolbarItems>
+                                <Button fx:id="exportTreeButton" styleClass="icon-button">
+                                    <graphic>
+                                        <FontIcon iconLiteral="fas-external-link-alt"/>
+                                    </graphic>
+                                    <tooltip>
+                                        <Tooltip text="Export tree..."/>
+                                    </tooltip>
+                                </Button>
+                            </toolbarItems>
 
                                 <AstTreeView fx:id="astTreeView"/>
 

@@ -8,6 +8,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 import static net.sourceforge.pmd.util.fxdesigner.util.AuxLanguageRegistry.defaultLanguageVersion;
+import static net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil.sanitizeExceptionMessage;
 import static net.sourceforge.pmd.util.fxdesigner.util.reactfx.ReactfxUtil.latestValue;
 
 import java.io.File;
@@ -49,9 +50,11 @@ import net.sourceforge.pmd.util.fxdesigner.model.testing.LiveViolationRecord;
 import net.sourceforge.pmd.util.fxdesigner.popups.AuxclasspathSetupController;
 import net.sourceforge.pmd.util.fxdesigner.popups.SimplePopups;
 import net.sourceforge.pmd.util.fxdesigner.util.AstTraversalUtil;
-import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
+import net.sourceforge.pmd.util.fxdesigner.popups.TreeExportWizardController;
 import net.sourceforge.pmd.util.fxdesigner.util.AuxLanguageRegistry;
+import net.sourceforge.pmd.util.fxdesigner.util.DesignerUtil;
 import net.sourceforge.pmd.util.fxdesigner.util.ResourceUtil;
+import net.sourceforge.pmd.util.fxdesigner.util.SoftReferenceCache;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsOwner;
 import net.sourceforge.pmd.util.fxdesigner.util.beans.SettingsPersistenceUtil.PersistentProperty;
 import net.sourceforge.pmd.util.fxdesigner.util.controls.AstTreeView;
@@ -152,6 +155,8 @@ public class SourceEditorController extends AbstractController {
 
 
     private Var<LanguageVersion> languageVersionUIProperty;
+    @FXML
+    private Button exportTreeButton;
 
 
     public SourceEditorController(DesignerRoot designerRoot) {
@@ -160,7 +165,8 @@ public class SourceEditorController extends AbstractController {
         this.astManager = astManagerImpl;
         oldAstManager = new ASTManagerImpl(astManagerImpl, AuxLanguageRegistry::mapNewJavaToOld);
 
-        designerRoot.registerService(DesignerRoot.AST_MANAGER, this.astManager);
+        designerRoot.registerService(DesignerRoot.AST_MANAGER, astManager);
+        designerRoot.registerService(DesignerRoot.TREE_EXPORT_WIZARD, new SoftReferenceCache<>(() -> new TreeExportWizardController(designerRoot)));
         designerRoot.registerService(DesignerRoot.OLD_AST_MANAGER, oldAstManager);
 
         violationsPopover = new PopOverWrapper<>(this::rebindPopover);
@@ -225,6 +231,9 @@ public class SourceEditorController extends AbstractController {
         setText(getDefaultText());
 
         searchButton.setOnAction(e -> astTreeView.focusSearchField());
+        exportTreeButton.setOnAction(
+            e -> getService(DesignerRoot.TREE_EXPORT_WIZARD).apply(x -> x.showYourself(x.bindToTree(getService(DesignerRoot.AST_MANAGER))))
+        );
 
         TestCreatorService creatorService = getService(DesignerRoot.TEST_CREATOR);
 
